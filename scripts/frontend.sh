@@ -14,7 +14,6 @@ FONT="\033[94m"
 OK="\033[92m"
 WARN="\033[93m"
 ERROR="\033[91m"
-BOLD="\033[1m"
 RESET="\033[0m"
 
 log()   { echo -e "${FONT}[yaksha]${RESET} $1"; }
@@ -36,13 +35,11 @@ stop_port() {
   fi
 }
 
-# ── Check / start frontend ──────────────────────────────────
-
+# ── Check / start frontend ─────────────────────────────────────────────────────
 if is_running; then
   ok "Frontend already running on http://localhost:5173"
 else
   stop_port 5173
-
   cd "$FRONTEND"
 
   log "Checking Node.js..."
