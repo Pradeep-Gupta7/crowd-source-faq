@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 export default {
+  darkMode: ['class', '[data-theme="dark"]'],
   // Scan all JS/JSX/TS/TSX files for Tailwind classes (supports incremental TS adoption)
   content: ['./index.html', './src/**/*.{js,jsx,ts,tsx}'],
 

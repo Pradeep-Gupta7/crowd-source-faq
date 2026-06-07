@@ -70,7 +70,7 @@ function CategoryPills({ categories, activeCategory, onSelect }: CategoryPillsPr
             onClick={() => onSelect('')}
             className={`flex items-center gap-2 px-4 py-2 rounded-full border text-xs font-semibold whitespace-nowrap transition-all duration-200 flex-shrink-0
               ${allActive
-                ? 'bg-ink text-accent-text border-ink'
+                ? 'bg-accent text-accent-text border-accent/60 shadow-[0_10px_26px_rgba(90,122,90,0.25)]'
                 : 'bg-card/80 text-ink border-border/70 hover:bg-cream hover:-translate-y-0.5 hover:shadow-subtle'
               }`}
           >
@@ -530,10 +530,15 @@ export default function FAQPage() {
                   {activeCategoryMeta}
                 </p>
               )}
-              <p className="faq-community-hint mt-3">
-                Can&apos;t find what you need?{' '}
-                <a href="/community">Ask in Community</a>
-              </p>
+              <div className="mt-5 flex items-center gap-3">
+                <span className="text-sm text-ink-soft">Can&apos;t find what you need?</span>
+                <a href="/community" className="btn-base btn-ghost text-sm">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+                  </svg>
+                  Ask in Community
+                </a>
+              </div>
             </div>
 
             <QuestionList

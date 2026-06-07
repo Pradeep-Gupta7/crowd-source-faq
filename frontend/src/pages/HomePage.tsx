@@ -367,36 +367,28 @@ export default function HomePage() {
                         {!loading && !searchError && matchingResults.length === 0 && isReadyForResults && (
                           <div className="rounded-2xl border border-dashed border-border bg-transparent p-4">
                             <p className="text-xs text-ink-soft">
-                              No matches found. Try a different phrase or ask the community.
+                              No matches found. Try a different phrase.
                             </p>
                           </div>
                         )}
                       </div>
 
-                      <div className="mt-3 rounded-2xl border border-border/70 p-3 flex items-center justify-between gap-3">
-                        <div>
-                          <p className="text-xs font-semibold text-ink">Need a human answer?</p>
-                          <p className="text-[11px] text-ink-soft">Ask the community and get help faster.</p>
+                      <div 
+                        onClick={handleAskCommunity}
+                        className="mt-4 px-4 py-3 rounded-lg flex gap-3 items-start cursor-pointer transition-all duration-200 ask-community-container border group"
+                      >
+                        <svg className="w-5 h-5 opacity-70 shrink-0 mt-0.5 ask-community-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+                        </svg>
+                        <div className="flex flex-col gap-0.5">
+                          <p className="font-medium text-sm ask-community-title">Need help from real people?</p>
+                          <p className="font-medium text-[13px] flex items-center ask-community-action">
+                            Ask in community 
+                            <svg className="w-3.5 h-3.5 ml-1 transition-transform duration-200 group-hover:translate-x-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M5 12h14M12 5l7 7-7 7"/>
+                            </svg>
+                          </p>
                         </div>
-                        <button
-                          onClick={handleAskCommunity}
-                          className="shrink-0 search-ask-btn cursor-pointer"
-                        >
-                          Ask community
-                          <svg
-                            className="search-ask-btn-icon"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            aria-hidden="true"
-                          >
-                            <line x1="5" y1="12" x2="19" y2="12" />
-                            <polyline points="12 5 19 12 12 19" />
-                          </svg>
-                        </button>
                       </div>
                     </div>
 

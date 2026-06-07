@@ -129,7 +129,7 @@ export default function Navbar() {
             </button>
             <button
               onClick={() => openModal('register')}
-              className="btn-primary-gradient px-4 py-1.5 text-sm font-semibold rounded-full transition-colors"
+              className="btn-base btn-primary text-sm"
             >
               Get started
             </button>
@@ -142,7 +142,7 @@ export default function Navbar() {
             {/* Ask Question button — green pill */}
             <button
               onClick={() => navigate('/community?ask=true')}
-              className="hidden lg:inline-flex items-center gap-1.5 px-4 py-2 rounded-full btn-primary-gradient text-xs font-semibold transition-all"
+              className="hidden lg:inline-flex btn-base btn-primary text-xs"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
@@ -288,7 +288,7 @@ export default function Navbar() {
               </button>
               <button
                 onClick={() => { openModal('register'); setMobileOpen(false); }}
-                className="btn-primary-gradient flex-1 py-2.5 px-4 text-sm font-semibold rounded-full transition-colors"
+                className="btn-base btn-primary flex-1 text-sm"
               >
                 Get started
               </button>

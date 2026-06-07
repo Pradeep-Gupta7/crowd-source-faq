@@ -339,26 +339,99 @@ select option {
     box-shadow: 0 0 0 3px rgb(var(--accent-rgb) / 0.20);
   }
 
-  /* ═════════ Primary gradient button (Linear/Vercel style) ═════════
-     Muted green gradient, NOT a flat bright green. Hover = brighter
-     + green glow. Used for hero CTAs and "Ask Question" pill. */
-  .btn-primary-gradient {
-    background-image: linear-gradient(180deg, #2dd070 0%, #16a34a 100%);
+  /* ═════════ Unified Button System ═════════ */
+  .btn-base {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 40px;
+    padding: 0 16px;
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+  }
+  .btn-base svg {
+    width: 16px;
+    height: 16px;
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+  }
+  .btn-base:hover svg {
+    opacity: 1;
+  }
+
+  /* Primary Button (Get Started / Ask Question) */
+  .btn-primary {
+    background-color: #6e8f83;
+    color: #ffffff;
+    box-shadow: none;
+    border: none;
+  }
+  .btn-primary:hover {
+    background-color: #5f7f73;
+    transform: none;
+    box-shadow: none;
+  }
+  .btn-primary:active {
+    background-color: #55786d;
+    transform: none;
+  }
+  
+  [data-theme="dark"] .btn-primary {
+    background-color: #16a34a; /* keeping existing dark mode base */
     color: #0B0F0D;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.10),
-                inset 0 1px 0 rgba(255, 255, 255, 0.12);
-    transition: filter 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+    background-image: none; /* remove gradient */
+    box-shadow: none; /* remove glow */
   }
-  .btn-primary-gradient:hover {
-    background-image: linear-gradient(180deg, #34d97a 0%, #1ea854 100%);
-    box-shadow: 0 6px 18px rgba(34, 197, 94, 0.30),
-                inset 0 1px 0 rgba(255, 255, 255, 0.18);
-    transform: translateY(-1px);
+  [data-theme="dark"] .btn-primary:hover {
+    background-color: #15803d; /* darker hover */
+    box-shadow: none;
   }
-  .btn-primary-gradient:active {
-    transform: translateY(0);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.10),
-                inset 0 1px 0 rgba(255, 255, 255, 0.10);
+  [data-theme="dark"] .btn-primary:active {
+    background-color: #166534;
+  }
+
+  /* Secondary Button (Search input) */
+  .btn-secondary {
+    background-color: #e6efea;
+    color: #5f7f73;
+    box-shadow: none;
+    border: none;
+  }
+  .btn-secondary:hover {
+    background-color: #dde9e3;
+    box-shadow: none;
+  }
+  [data-theme="dark"] .btn-secondary {
+    background-color: rgb(var(--accent-rgb));
+    color: rgb(var(--accent-text-rgb));
+    box-shadow: none;
+  }
+  [data-theme="dark"] .btn-secondary:hover {
+    background-color: rgba(34, 197, 94, 0.85); /* slightly reduced contrast */
+    box-shadow: none;
+  }
+
+  /* Ghost Button (Ask in Community) */
+  .btn-ghost {
+    background-color: transparent;
+    border: 1px solid #d6ded9;
+    color: #5f7f73;
+    box-shadow: none;
+  }
+  .btn-ghost:hover {
+    background-color: #f3f7f5;
+  }
+  [data-theme="dark"] .btn-ghost {
+    background-color: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.7);
+  }
+  [data-theme="dark"] .btn-ghost:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.9);
   }
 
   /* Focus glow ring — soft green halo on focused interactive surfaces */
@@ -367,15 +440,11 @@ select option {
     box-shadow: 0 0 0 3px rgb(var(--accent-rgb) / 0.35);
   }
 
-  /* In dark mode, override the flat .bg-accent to use the muted
-     gradient instead of a solid bright green. The text colour is
-     already handled via .text-accent-text. */
-  [data-theme="dark"] .bg-accent:not(.btn-primary-gradient) {
-    background-image: linear-gradient(180deg, #2dd070 0%, #16a34a 100%);
-    background-color: transparent;
-  }
-  [data-theme="dark"] .bg-accent:not(.btn-primary-gradient):hover {
-    background-image: linear-gradient(180deg, #34d97a 0%, #1ea854 100%);
+  /* In dark mode, override the flat .bg-accent if needed.
+     Removing the .btn-primary-gradient related overrides. */
+  [data-theme="dark"] .bg-accent:not(.btn-primary, .btn-secondary) {
+    background-color: rgb(var(--accent-rgb));
+    background-image: none;
   }
 
   /* ═════════════════════════════════════════════════════════════
@@ -678,59 +747,41 @@ select option {
   }
 
   /* ═════════════════════════════════════════════════════════════
-     .search-ask-btn — "Ask the Community" ghost button in search
-     Ghost style: blends with UI, green accent on hover.
-     DARK: dark glass bg, muted text, green on hover with glow.
-     LIGHT: white bg, gray text, green on hover.
+     Ask in Community (No Results block)
      ═════════════════════════════════════════════════════════════ */
-  .search-ask-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 7px 16px;
-    border-radius: 9999px;
-    border: 1px solid rgba(0, 0, 0, 0.08);
-    background-color: #ffffff;
-    color: #374151;
-    font-size: 12px;
-    font-weight: 600;
-    line-height: 1;
-    cursor: pointer;
-    transition: background-color 0.2s ease,
-                border-color 0.2s ease,
-                color 0.2s ease,
-                box-shadow 0.2s ease;
+  .ask-community-container {
+    background-color: #f4f7f5;
+    border-color: #e3ebe6;
   }
-  .search-ask-btn:hover {
-    background-color: rgba(22, 163, 74, 0.08);
-    border-color: rgba(22, 163, 74, 0.2);
-    color: #16A34A;
+  .ask-community-container:hover {
+    background-color: #eef4f1;
   }
-  .search-ask-btn:active {
-    background-color: rgba(22, 163, 74, 0.12);
+  .ask-community-title {
+    color: #2f3e39;
   }
-  .search-ask-btn .search-ask-btn-icon {
-    color: #16A34A;
-    transition: color 0.2s ease;
+  .ask-community-icon {
+    color: #2f3e39;
   }
-  [data-theme="dark"] .search-ask-btn {
-    background-color: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    color: #D1D5DB;
-  }
-  [data-theme="dark"] .search-ask-btn:hover {
-    background-color: rgba(34, 197, 94, 0.08);
-    border-color: rgba(34, 197, 94, 0.25);
-    color: #22C55E;
-    box-shadow: 0 0 20px rgba(34, 197, 94, 0.15);
-  }
-  [data-theme="dark"] .search-ask-btn:active {
-    background-color: rgba(34, 197, 94, 0.12);
-  }
-  [data-theme="dark"] .search-ask-btn .search-ask-btn-icon {
-    color: #22C55E;
+  .ask-community-action {
+    color: #5f7f73;
   }
 
+  [data-theme="dark"] .ask-community-container {
+    background-color: rgba(255, 255, 255, 0.03);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+  [data-theme="dark"] .ask-community-container:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+  [data-theme="dark"] .ask-community-title {
+    color: rgba(255, 255, 255, 0.8);
+  }
+  [data-theme="dark"] .ask-community-icon {
+    color: #ffffff;
+  }
+  [data-theme="dark"] .ask-community-action {
+    color: #9fb8ad;
+  }
   /* ═════════════════════════════════════════════════════════════
      .search-popular-pill — enhanced popular search capsules
      Top 3 are prominent; all use rounded-full pills.
@@ -1297,25 +1348,7 @@ select option {
     color: #d1d5db;
   }
 
-  /* Community hint */
-  .faq-community-hint {
-    font-size: 12px;
-    color: rgba(0, 0, 0, 0.35);
-    transition: color 0.2s ease;
-  }
-  .faq-community-hint a {
-    color: rgb(var(--accent-rgb));
-    text-decoration: none;
-    font-weight: 500;
-    transition: opacity 0.2s ease;
-  }
-  .faq-community-hint a:hover {
-    opacity: 0.8;
-    text-decoration: underline;
-  }
-  [data-theme="dark"] .faq-community-hint {
-    color: rgba(255, 255, 255, 0.25);
-  }
+
 
   /* Doodle underline decoration (for hero headings) */
   .doodle-underline {
