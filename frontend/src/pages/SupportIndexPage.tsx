@@ -69,6 +69,17 @@ function SupportIndexInner(): React.ReactElement {
   return (
     <div className="min-h-screen bg-bg">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+        <div className="mb-6">
+          <button
+            onClick={() => navigate('/home')}
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-ink-soft hover:text-ink transition-colors"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+            Back
+          </button>
+        </div>
         <header className="flex items-start justify-between gap-3 mb-6">
           <div>
             <p className="text-[11px] uppercase tracking-wider font-semibold text-accent">Experimental</p>
@@ -121,6 +132,21 @@ function SupportIndexInner(): React.ReactElement {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="text-sm font-medium text-ink truncate">{r.title}</p>
+                        {/* v1.65 — Golden priority badge. Surfaces the
+                            user's own Golden-priority status in their
+                            ticket list so they can see the SP cost they
+                            paid and that the ticket is being escalated. */}
+                        {r.isGolden && (
+                          <span
+                            className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded border font-semibold uppercase tracking-wider bg-accent/15 text-accent border-accent/30"
+                            title={r.spCost ? `Golden Ticket — ${r.spCost} SP applied` : 'Golden Ticket — admin-promoted, no SP cost'}
+                          >
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                              <path d="M12 2 L13.5 10.5 L22 12 L13.5 13.5 L12 22 L10.5 13.5 L2 12 L10.5 10.5 Z" />
+                            </svg>
+                            Golden
+                          </span>
+                        )}
                         <span className={`text-[10px] px-1.5 py-0.5 rounded border font-semibold uppercase tracking-wider ${STATUS_STYLES[r.status]}`}>
                           {r.status}
                         </span>

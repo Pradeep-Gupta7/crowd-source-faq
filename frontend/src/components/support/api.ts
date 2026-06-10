@@ -38,6 +38,9 @@ export interface ListFilters {
   to?: string;
   page?: number;
   limit?: number;
+  // v1.65 — Golden filter. Wired through to
+  // GET /api/support/requests?isGolden=true|false on the backend.
+  isGolden?: boolean;
 }
 
 export async function listSupportRequests(filters: ListFilters = {}): Promise<SupportListResponse> {
@@ -94,6 +97,70 @@ export async function updateSupportStatus(
   payload: StatusUpdatePayload,
 ): Promise<SupportRequest> {
   const res = await api.patch<{ request: SupportRequest }>(`/support/requests/${id}/status`, payload);
+  return res.data.request;
+}
+
+// ─── v1.65 — Golden Ticket (user-driven flow) ───────────────────────────────
+
+export interface GoldenQueueItem {
+  _id: string;
+  isOwn: boolean;
+  userName: string;
+  title: string;
+  details: string;
+  spCost: number;
+  status: string;
+  createdAt: string;
+}
+
+export interface SpurtiStatus {
+  sp: number;
+  cooldownHours: number;
+  cooldownEndsAt: string | null;
+  canSubmitGolden: boolean;
+}
+
+/**
+ * GET /api/support/me/sp
+ * Returns the user's SP balance + Golden cooldown status. Used by
+ * the GoldenTicket page header and by the navbar SpurtiChip.
+ */
+export async function fetchSpurtiStatus(): Promise<SpurtiStatus> {
+  const res = await api.get<SpurtiStatus>('/support/me/sp');
+  return res.data;
+}
+
+/**
+ * GET /api/support/golden/queue
+ * Returns recent Golden tickets for the live Escalation Queue panel.
+ * Non-admin callers see requester name as 'ANONYMOUS' for tickets
+ * they didn't submit.
+ */
+export async function fetchGoldenQueue(limit = 8): Promise<GoldenQueueItem[]> {
+  const res = await api.get<{ items: GoldenQueueItem[] }>('/support/golden/queue', {
+    params: { limit },
+  });
+  return res.data.items ?? [];
+}
+
+/**
+ * POST /api/support/requests with isGolden=true + spCost.
+ * Submits a user-driven Golden Ticket escalation. Deducts the SP
+ * upfront; 429 if the user is in cooldown; 400 if they don't have
+ * enough SP for the chosen investment.
+ */
+export async function submitGoldenTicket(
+  title: string,
+  details: string,
+  spCost: number,
+): Promise<SupportRequest> {
+  const res = await api.post<{ request: SupportRequest }>('/support/requests', {
+    issueType: 'other',
+    title,
+    details,
+    isGolden: true,
+    spCost,
+  });
   return res.data.request;
 }
 

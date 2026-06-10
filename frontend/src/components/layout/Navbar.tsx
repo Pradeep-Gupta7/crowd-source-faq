@@ -6,6 +6,7 @@ import { useFeatureFlag } from '../../context/FeatureFlagContext';
 import { buildTransformedUrl } from '../../hooks/useCloudinaryUpload';
 import NotificationBell from '../../components/notifications/NotificationBell';
 import ThemeToggle from '../../components/ui/ThemeToggle';
+import SpurtiChip from './SpurtiChip';
 
 const navItems = [
   { label: 'Home', to: '/' },
@@ -36,8 +37,12 @@ export default function Navbar() {
   const gate = useAuthGate();
   // Support link is only rendered when the experimental feature is on.
   const supportOn = useFeatureFlag('sessionSupport');
+  // v1.65 — Golden Ticket link. Always shown (not gated by feature
+  // flag because it's a separate user-driven flow that doesn't
+  // depend on the Session Support admin moderation chain). Hidden
+  // for unauthed visitors via the auth-gate below.
   const allNavItems = supportOn
-    ? [...navItems, { label: 'Support', to: '/support' }]
+    ? [...navItems, { label: 'Support', to: '/support' }, { label: 'Golden', to: '/golden' }]
     : navItems;
 
   useEffect(() => {
@@ -158,6 +163,14 @@ export default function Navbar() {
             </button>
 
             <div className="hidden lg:block w-px h-6 bg-border mx-1" />
+
+            {/* Spurti Points chip — v1.65, additive.
+                Reads the current SP balance from /api/support/me/sp and
+                renders a sage pill. Cheap one-shot fetch on user-change
+                (cancelled + re-fetched on userId flip). Hidden for
+                unauthed visitors; collapses to nothing on SP=0 to
+                avoid visual noise for users who have never earned SP. */}
+            <SpurtiChip />
 
             <NotificationBell />
 

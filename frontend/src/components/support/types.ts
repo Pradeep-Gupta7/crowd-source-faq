@@ -109,6 +109,16 @@ export interface SupportRequest {
   contextFields: SupportContextFieldValue[];
   createdAt: string;
   updatedAt: string;
+  // ── v1.65 — Golden Ticket fields (additive). All optional so
+  // pre-v1.65 documents read as non-Golden through the type system
+  // without forcing a migration of the response shape.
+  isGolden?: boolean;
+  spCost?: number;
+  goldenConvertedAt?: string | null;
+  goldenConvertedBy?: string | null;
+  goldenConvertedByName?: string;
+  goldenRejectionReason?: string;
+  goldenRejectionEndsAt?: string | null;
 }
 
 export interface SupportIssueOption {

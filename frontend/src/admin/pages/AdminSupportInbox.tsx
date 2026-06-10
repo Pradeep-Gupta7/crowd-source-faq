@@ -25,6 +25,10 @@ function InboxInner(): React.ReactElement {
   const from = params.get('from') ?? '';
   const to = params.get('to') ?? '';
   const q = params.get('q') ?? '';
+  // v1.65 — Golden filter. '' = show all, 'true' = only Golden,
+  // 'false' = only non-Golden. Backed by the new
+  // `?isGolden=true|false` query param on GET /api/support/requests.
+  const isGolden = params.get('isGolden') ?? '';
   const page = parseInt(params.get('page') ?? '1', 10) || 1;
 
   useEffect(() => {
@@ -35,6 +39,9 @@ function InboxInner(): React.ReactElement {
       status: (status || undefined) as SupportStatus | undefined,
       issueType: (issueType || undefined) as 'internet' | 'camera' | 'microphone' | 'device' | 'power' | 'other' | undefined,
       userName: userName || undefined,
+      // v1.65 — pass the Golden filter through to the API. Coerce
+      // to undefined for the "all" case so the URL param is omitted.
+      isGolden: isGolden === 'true' ? true : isGolden === 'false' ? false : undefined,
       email: email || undefined,
       from: from || undefined,
       to: to || undefined,
@@ -167,9 +174,27 @@ function InboxInner(): React.ReactElement {
                       </span>
                     </td>
                     <td className="admin-td">
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded border font-semibold uppercase tracking-wider ${statusStyle(r.status)}`}>
-                        {r.status}
-                      </span>
+                      <div className="flex flex-col gap-1 items-start">
+                        {/* v1.65 — Golden badge. Surfaces the new
+                            isGolden flag in the inbox so admins can
+                            spot priority tickets at a glance. The
+                            Sage accent matches the navbar SP chip
+                            so users learn the visual language once. */}
+                        {r.isGolden && (
+                          <span
+                            className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded border font-semibold uppercase tracking-wider bg-accent/15 text-accent border-accent/30"
+                            title={r.spCost ? `Golden Ticket — ${r.spCost} SP applied` : 'Golden Ticket — admin-promoted, no SP cost'}
+                          >
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                              <path d="M12 2 L13.5 10.5 L22 12 L13.5 13.5 L12 22 L10.5 13.5 L2 12 L10.5 10.5 Z" />
+                            </svg>
+                            Golden
+                          </span>
+                        )}
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded border font-semibold uppercase tracking-wider ${statusStyle(r.status)}`}>
+                          {r.status}
+                        </span>
+                      </div>
                     </td>
                     <td className="admin-td text-ink-faint tabular-nums">{r.followUps.length}</td>
                     <td className="admin-td text-ink-faint">{new Date(r.updatedAt).toLocaleDateString()}</td>

@@ -15,11 +15,11 @@ const FAQPage = lazy(() => import('./pages/FAQPage'));
 const CommunityPage = lazy(() => import('./pages/CommunityPage'));
 const LeaderboardPage = lazy(() => import('./pages/LeaderboardPage'));
 const SavedKnowledgePage = lazy(() => import('./pages/SavedKnowledgePage'));
-const ExplorePage = lazy(() => import('./pages/ExplorePage'));
 const BatchPortalPage = lazy(() => import('./pages/BatchPortalPage'));
 const SupportIndexPage = lazy(() => import('./pages/SupportIndexPage'));
 const NewSupportRequestPage = lazy(() => import('./pages/NewSupportRequestPage'));
 const SupportTicketPage = lazy(() => import('./pages/SupportTicketPage'));
+const GoldenTicketPage = lazy(() => import('./pages/GoldenTicketPage'));
 
 // Admin pages
 const AdminLogin = lazy(() => import('./admin/pages/AdminLogin'));
@@ -109,9 +109,8 @@ function AppRoutes() {
       <Routes>
         {/* The public FAQ discovery page is now the base URL — anyone
             landing on the site gets the no-auth, anonymous-analytics
-            experience. The legacy "home" page lives at /home. */}
-        <Route path="/" element={<ExplorePage />} />
-        <Route path="/home" element={<HomePage />} />
+            experience. */}
+        <Route path="/" element={<HomePage />} />
         <Route path="/explore/select" element={<BatchPortalPage />} />
         <Route path="/faq" element={<FAQPage />} />
         <Route path="/faq/:id" element={<FAQPage />} />
@@ -123,6 +122,14 @@ function AppRoutes() {
         <Route path="/support" element={<SupportIndexPage />} />
         <Route path="/support/new" element={<NewSupportRequestPage />} />
         <Route path="/support/:id" element={<SupportTicketPage />} />
+
+        {/* v1.65 — Golden Ticket (user-driven flow). The new landing
+            page is the public entry point: slider for SP, query +
+            context form, live Escalation Queue on the right. Cooldown
+            enforcement + 1.25x rejection penalty are server-side; the
+            UI just renders the disabled state when the user is in
+            cooldown. */}
+        <Route path="/golden" element={<GoldenTicketPage />} />
 
         {/* Member-only: a user's own settings */}
         <Route
