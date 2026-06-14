@@ -9,6 +9,8 @@ import { createTeaDrop } from './teaNotificationController.js';
 import { dispatchNotification } from '../utils/http/notificationDispatcher.js';
 import { communityLog } from '../utils/http/logger.js';
 import { assertCanCreateContent } from '../utils/banUtils.js';
+// v1.69 — Phase 3e: program-scope guard for all comment writes.
+import { assertSameProgram } from '../utils/db/scopedQuery.js';
 
 // Extend Express Request to include user (same pattern as auth middleware)
 declare global {
@@ -70,6 +72,7 @@ export const addComment = async (req: Request, res: Response): Promise<void> => 
       res.status(404).json({ message: 'Post not found.' });
       return;
     }
+    if (assertSameProgram(post, req.programContext, res)) return;
     if (post.isLocked) {
       res.status(403).json({ message: 'This post is locked. New comments are disabled.' });
       return;
@@ -238,6 +241,7 @@ export const setCommentDNA = async (req: Request, res: Response): Promise<void> 
       res.status(404).json({ message: 'Post not found.' });
       return;
     }
+    if (assertSameProgram(post, req.programContext, res)) return;
 
     const comment = (post.comments as any).id(req.params.commentId);
     if (!comment) {
@@ -269,6 +273,7 @@ export const clearCommentDNA = async (req: Request, res: Response): Promise<void
       res.status(404).json({ message: 'Post not found.' });
       return;
     }
+    if (assertSameProgram(post, req.programContext, res)) return;
 
     const comment = (post.comments as any).id(req.params.commentId);
     if (!comment) {
@@ -293,6 +298,7 @@ export const verifyComment = async (req: Request, res: Response): Promise<void> 
       res.status(404).json({ message: 'Post not found.' });
       return;
     }
+    if (assertSameProgram(post, req.programContext, res)) return;
 
     const comment = (post.comments as any).id(req.params.commentId);
     if (!comment) {
@@ -319,6 +325,7 @@ export const acceptCommentAnswer = async (req: Request, res: Response): Promise<
       res.status(404).json({ message: 'Post not found.' });
       return;
     }
+    if (assertSameProgram(post, req.programContext, res)) return;
 
     // Only the post author can accept an answer
     if (post.author.toString() !== req.user!._id.toString()) {
@@ -445,6 +452,7 @@ export const updateComment = async (req: Request, res: Response): Promise<void> 
 
     const post = await CommunityPost.findById(req.params.id);
     if (!post) { res.status(404).json({ message: 'Post not found.' }); return; }
+    if (assertSameProgram(post, req.programContext, res)) return;
 
     const comment = (post.comments as any).id(req.params.commentId) as any;
     if (!comment) { res.status(404).json({ message: 'Comment not found.' }); return; }
@@ -493,6 +501,7 @@ export const deleteComment = async (req: Request, res: Response): Promise<void> 
   try {
     const post = await CommunityPost.findById(req.params.id);
     if (!post) { res.status(404).json({ message: 'Post not found.' }); return; }
+    if (assertSameProgram(post, req.programContext, res)) return;
 
     const comment = (post.comments as any).id(req.params.commentId) as any;
     if (!comment) { res.status(404).json({ message: 'Comment not found.' }); return; }

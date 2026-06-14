@@ -63,3 +63,31 @@ export async function findScoped<M extends Model<any>>(
 ): Promise<ReturnType<M['find']>> {
   return (model as any).find(withProgramScope(filter, batchId)) as ReturnType<M['find']>;
 }
+
+/**
+ * v1.69 — assertSameProgram: guard for handlers that look up a
+ * document by ID and then mutate it. When `req.programContext`
+ * is attached, the document's `batchId` must match. Otherwise
+ * the helper sends a 404 (NOT a 403 — we don't want to leak
+ * existence) and the caller should return immediately.
+ *
+ * Usage:
+ *
+ *   const post = await CommunityPost.findById(req.params.id);
+ *   if (!post) { res.status(404).json({ message: 'Post not found.' }); return; }
+ *   if (assertSameProgram(post, req.programContext, res)) return;
+ *   // ... continue with the scoped-by-program mutation
+ */
+export function assertSameProgram(
+  doc: { batchId?: unknown } | null,
+  programContext: { batchId: string } | null | undefined,
+  res: { status: (code: number) => { json: (body: unknown) => void } }
+): boolean {
+  if (!programContext) return false;
+  const docBatch = (doc as { batchId?: { toString: () => string } | string | null } | null)?.batchId;
+  if (!docBatch || docBatch.toString() !== programContext.batchId) {
+    res.status(404).json({ message: 'Not found.' });
+    return true;
+  }
+  return false;
+}

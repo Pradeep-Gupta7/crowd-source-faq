@@ -18,6 +18,8 @@ import ReputationLog from '../models/ReputationLog.js';
 import { autoAwardBadges } from './reputationController.js';
 import { createTeaDrop } from './teaNotificationController.js';
 import { communityLog } from '../utils/http/logger.js';
+// v1.69 — Phase 3e: program-scope guard for comment votes.
+import { assertSameProgram } from '../utils/db/scopedQuery.js';
 
 // ─── toggleCommentUpvote ───────────────────────────────────────────────────────
 // POST /api/community/:id/comments/:commentId/upvote
@@ -26,6 +28,7 @@ export const toggleCommentUpvote = async (req: Request, res: Response): Promise<
   try {
     const post = await CommunityPost.findById(req.params.id);
     if (!post) { res.status(404).json({ message: 'Post not found.' }); return; }
+    if (assertSameProgram(post, req.programContext, res)) return;
 
     const comment = (post.comments as any).id(req.params.commentId);
     if (!comment) { res.status(404).json({ message: 'Comment not found.' }); return; }
@@ -129,6 +132,7 @@ export const toggleCommentDownvote = async (req: Request, res: Response): Promis
   try {
     const post = await CommunityPost.findById(req.params.id as string);
     if (!post) { res.status(404).json({ message: 'Post not found.' }); return; }
+    if (assertSameProgram(post, req.programContext, res)) return;
 
     const comment = (post.comments as any).id(req.params.commentId);
     if (!comment) { res.status(404).json({ message: 'Comment not found.' }); return; }
