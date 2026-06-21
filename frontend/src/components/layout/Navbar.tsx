@@ -19,7 +19,6 @@ const navItems: NavItem[] = [
   { label: 'FAQ', to: '/faq' },
   { label: 'Welcome Package', to: '/welcome' },
   { label: 'Community', to: '/community' },
-  { label: 'Leaderboard', to: '/leaderboard' },
 ];
 
 function getAvatarColor(name?: string): string {
@@ -98,7 +97,7 @@ export default function Navbar({ showProgramSwitcher: _showProgramSwitcher = fal
   // currently off" panel if a user types the URL directly).
   const goldenOn = useFeatureFlag('goldenTicket');
   // v1.65.1 — Golden Ticket link. Shown only at xl: because the
-  // center pill (Home/FAQ/Community/Leaderboard + the sessionSupport
+  // center pill (Home/FAQ/Community + the sessionSupport
   // tabs Support/Golden) is already at capacity at lg. At xl there's
   // enough room; below that Golden is reachable via /golden and
   // any admin nudge in the inbox.

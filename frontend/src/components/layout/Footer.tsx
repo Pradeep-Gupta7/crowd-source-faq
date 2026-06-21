@@ -26,7 +26,6 @@ export default function Footer({ branding }: { branding?: { logoText?: string; f
             { label: 'Home', to: '/' },
             { label: 'FAQ', to: '/faq' },
             { label: 'Community', to: '/community' },
-            { label: 'Leaderboard', to: '/leaderboard' },
           ].map(({ label, to }) => (
             <Link
               key={to}

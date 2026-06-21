@@ -1,12 +1,9 @@
 import { Router } from 'express';
 import { adminOnly } from '../middleware/admin.js';
-import { awardPoints, getUserReputation, issueBadge, revokeBadge, getLeaderboard } from '../controllers/reputationController.js';
+import { awardPoints, getUserReputation, issueBadge, revokeBadge } from '../controllers/reputationController.js';
 import { validateBody, awardPointsSchema, issueBadgeSchema } from '../utils/auth/validation.js';
 
 const router = Router();
-
-// Public leaderboard — no auth required
-router.get('/leaderboard', getLeaderboard);
 
 router.use(adminOnly);
 

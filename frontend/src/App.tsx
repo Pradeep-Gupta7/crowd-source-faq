@@ -16,7 +16,6 @@ const AccountPage = lazy(() => import('./pages/AccountPage'));
 const HomePage = lazy(() => import('./pages/HomePage'));
 const FAQPage = lazy(() => import('./pages/FAQPage'));
 const CommunityPage = lazy(() => import('./pages/CommunityPage'));
-const LeaderboardPage = lazy(() => import('./pages/LeaderboardPage'));
 const SavedKnowledgePage = lazy(() => import('./pages/SavedKnowledgePage'));
 const BatchPortalPage = lazy(() => import('./pages/BatchPortalPage'));
 const SupportIndexPage = lazy(() => import('./pages/SupportIndexPage'));
@@ -37,7 +36,6 @@ const AdminUsers = lazy(() => import('./admin/pages/AdminUsers'));
 const AdminSettings = lazy(() => import('./admin/pages/AdminSettings'));
 const AdminCommunity = lazy(() => import('./admin/pages/AdminCommunity'));
 const AdminModeration = lazy(() => import('./admin/pages/AdminModeration'));
-const AdminLeaderboard = lazy(() => import('./admin/pages/AdminLeaderboard'));
 const AdminUnresolvedSearch = lazy(() => import('./admin/pages/AdminUnresolvedSearch'));
 const AdminZoomMeetings = lazy(() => import('./admin/pages/AdminZoomMeetings'));
 const AdminZoomInsights = lazy(() => import('./admin/pages/AdminZoomInsights'));
@@ -105,7 +103,7 @@ function AdminRoute({ children }: AdminRouteProps) {
 }
 
 // Component defining all available URLs in the app.
-// All "content" routes (home, faq, community, leaderboard) are now public —
+// All "content" routes (home, faq, community) are now public —
 // read access is universal, write actions open the auth modal in place.
 function AppRoutes() {
   const { loading } = useAuth();
@@ -145,7 +143,6 @@ function AppRoutes() {
           <Route path="/faq" element={<FAQPage />} />
           <Route path="/faq/:id" element={<FAQPage />} />
           <Route path="/community" element={<CommunityPage />} />
-          <Route path="/leaderboard" element={<LeaderboardPage />} />
           <Route path="/saved" element={<SavedKnowledgePage />} />
 
           {/* Session Support (experimental — gated by feature flag at page level) */}
@@ -213,7 +210,6 @@ function AppRoutes() {
         <Route path="/admin/settings" element={<AdminRoute><AdminLayout><AdminSettings /></AdminLayout></AdminRoute>} />
         <Route path="/admin/community" element={<AdminRoute><AdminLayout><AdminCommunity /></AdminLayout></AdminRoute>} />
         <Route path="/admin/moderation" element={<AdminRoute><AdminLayout><AdminModeration /></AdminLayout></AdminRoute>} />
-        <Route path="/admin/leaderboard" element={<AdminRoute><AdminLayout><AdminLeaderboard /></AdminLayout></AdminRoute>} />
         <Route path="/admin/unresolved-search" element={<AdminRoute><AdminLayout><AdminUnresolvedSearch /></AdminLayout></AdminRoute>} />
         <Route path="/admin/zoom-meetings" element={<AdminRoute><AdminLayout><AdminZoomMeetings /></AdminLayout></AdminRoute>} />
         <Route path="/admin/zoom-insights" element={<AdminRoute><AdminLayout><AdminZoomInsights /></AdminLayout></AdminRoute>} />
@@ -284,8 +280,8 @@ const FIRST_VISIT_PROMPT_KEY = 'yaksha_first_visit_prompt_seen';
  *
  * Spec ("Authentication & Access Control Fixes"):
  *  - Appears once when a non-authenticated user first enters the website
- *  - Does NOT reappear on subsequent page navigations (Home → FAQ → Community
- *    → Leaderboard, etc.)
+ *  - Does NOT reappear on subsequent page navigations (Home → FAQ → Community,
+ *    etc.)
  *  - Does NOT reappear when the user signs out and visits again
  *  - Does NOT appear at all if the user is already signed in
  *  - Reappearing on a restricted action is handled separately by useAuthGate()

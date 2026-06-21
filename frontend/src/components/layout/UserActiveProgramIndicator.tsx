@@ -2,7 +2,7 @@
  * v1.69 — Phase 12: UserActiveProgramIndicator
  *
  * Lightweight pill rendered at the top of the user-facing pages
- * (FAQ / Community / Support / Leaderboard) so the user
+ * (FAQ / Community / Support) so the user
  * always knows which program they're viewing. The pill is
  * derived from `BatchContext.currentBatch`; the navbar's
  * `BatchSwitcher` is the way to actually switch programs.
@@ -10,7 +10,7 @@
  * For per-program data:
  *   - The home page course picker picks the course within the
  *     active program.
- *   - The FAQ / Community / Support / Leaderboard pages
+ *   - The FAQ / Community / Support pages
  *     already pull ?batchId=... from `currentBatch._id` via
  *     the existing hooks (this commit is a UX improvement, not
  *     a backend change).
