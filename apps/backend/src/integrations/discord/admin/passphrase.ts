@@ -50,7 +50,7 @@ interface LockoutState {
  * passphrase (logs a warning, audits the rotation).
  */
 export async function seedPassphraseFromEnv(): Promise<void> {
-  const envValue = (process.env.ADMIN_DISCORD_PASSPHRASE ?? '').trim();
+  const envValue = (process.env.ADMIN_DISCORD_PASSPHRASE ?? process.env.DISCORD_ADMIN_PASSPHRASE ?? '').trim();
   if (!envValue) {
     throw new Error(
       'ADMIN_DISCORD_PASSPHRASE env var is required to bootstrap the Discord admin panel.'

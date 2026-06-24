@@ -107,7 +107,7 @@ export async function checkPassphraseInitialised(): Promise<DiagnosticResult> {
     return { name: 'Passphrase', status: 'fail', detail: error.message, latencyMs };
   }
   if (result && result.source !== 'mongo') {
-    return { name: 'Passphrase', status: 'fail', detail: 'not initialised — set ADMIN_DISCORD_PASSPHRASE env and restart' };
+    return { name: 'Passphrase', status: 'fail', detail: 'not initialised — set DISCORD_ADMIN_PASSPHRASE / ADMIN_DISCORD_PASSPHRASE env and restart' };
   }
   return { name: 'Passphrase', status: 'ok', detail: 'initialised' };
 }

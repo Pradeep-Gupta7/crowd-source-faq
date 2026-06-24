@@ -267,9 +267,12 @@ describe('admin.passphrase — getLockoutStatus()', () => {
 describe('admin.passphrase — seedPassphraseFromEnv()', () => {
   it('throws when ADMIN_DISCORD_PASSPHRASE env var is unset', async () => {
     const original = process.env.ADMIN_DISCORD_PASSPHRASE;
+    const originalDiscord = process.env.DISCORD_ADMIN_PASSPHRASE;
     delete process.env.ADMIN_DISCORD_PASSPHRASE;
+    delete process.env.DISCORD_ADMIN_PASSPHRASE;
     await expect(seedPassphraseFromEnv()).rejects.toThrow(/ADMIN_DISCORD_PASSPHRASE/);
     if (original) process.env.ADMIN_DISCORD_PASSPHRASE = original;
+    if (originalDiscord) process.env.DISCORD_ADMIN_PASSPHRASE = originalDiscord;
   });
 
   it('hashes and stores the env passphrase', async () => {

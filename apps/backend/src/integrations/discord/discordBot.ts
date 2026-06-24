@@ -93,6 +93,15 @@ export async function startBot(): Promise<Client | null> {
     return null;
   }
 
+  // Seeding the admin passphrase in MongoDB on first boot
+  try {
+    const { seedPassphraseFromEnv } = await import('./admin/passphrase.js');
+    await seedPassphraseFromEnv();
+    logger.info('[bot] Admin passphrase seeded successfully');
+  } catch (err) {
+    logger.warn(`[bot] failed to seed admin passphrase: ${(err as Error).message}`);
+  }
+
   client = new Client({
     intents: [
       GatewayIntentBits.Guilds,
