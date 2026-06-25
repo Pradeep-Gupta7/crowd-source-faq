@@ -31,8 +31,7 @@
 
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
-import { EMBEDDING_DIM } from '../utils/ai/embeddings.js';
-import AiConfig from '../modules/ai/ai-config.model.js';
+import { getActiveEmbeddingConfig } from '../utils/ai/embeddings.js';
 
 dotenv.config();
 dotenv.config({ path: '.env.local' });
@@ -54,8 +53,8 @@ async function createIndexes() {
   const faqCollection = db.collection('yaksha_faq_faqs');
   const postCollection = db.collection('yaksha_faq_communityposts');
 
-  const config = await AiConfig.findOne({ batchId: null, isActive: true });
-  const activeDimensions = config?.embedding?.dimensions || EMBEDDING_DIM;
+  const config = await getActiveEmbeddingConfig();
+  const activeDimensions = config.dimensions;
 
   // Atlas Vector Search definition — TWO valid shapes:
   //

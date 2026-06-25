@@ -104,6 +104,7 @@ const CATEGORY_PREFIXES: Array<{ prefix: string; category: ConfigCategory }> = [
   { prefix: 'gcs',            category: 'storage' },
   { prefix: 'cloudinary',     category: 'storage' },
   { prefix: 'huggingface',    category: 'storage' },
+  { prefix: 'embedding',      category: 'ai' },
   { prefix: 'zoom',           category: 'integration' },
   { prefix: 'discord',        category: 'integration' },
   { prefix: 'log',            category: 'logging' },

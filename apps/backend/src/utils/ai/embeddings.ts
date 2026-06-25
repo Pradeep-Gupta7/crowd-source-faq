@@ -14,6 +14,7 @@ import {
 } from '@huggingface/transformers';
 import mongoose, { Types } from 'mongoose';
 import AiConfig from '../../modules/ai/ai-config.model.js';
+import { getConfig } from '../../config/runtimeConfig.js';
 import { logger } from '../http/logger.js';
 
 export const MODEL_SLUG = 'mixedbread-ai/mxbai-embed-large-v1';
@@ -58,16 +59,79 @@ export async function getActiveEmbeddingConfig(batchId: string | null = null) {
     baseURL = config.embedding.baseURL || '';
     apiKey = config.getEmbeddingApiKey() || '';
   } else {
-    // Legacy environment variable fallback
-    const hfKey = (process.env.HUGGINGFACE_API_KEY ?? '').trim();
-    if (hfKey) {
-      provider = 'huggingface';
-      apiKey = hfKey;
+    // Read from the unified 3-layer runtime config resolver (AdminConfig overrides / env vars)
+    try {
+      const providerResult = await getConfig('embedding.provider', { programId: batchId });
+      if (providerResult.value) {
+        provider = String(providerResult.value) as any;
+      } else {
+        const hfKeyResult = await getConfig('huggingface.apiKey', { programId: batchId });
+        if (hfKeyResult.value) {
+          provider = 'huggingface';
+        }
+      }
+
+      const modelResult = await getConfig('embedding.model', { programId: batchId });
+      if (modelResult.value) {
+        model = String(modelResult.value);
+      }
+
+      const dimsResult = await getConfig('embedding.dimensions', { programId: batchId });
+      if (dimsResult.value) {
+        const parsedDims = parseInt(String(dimsResult.value), 10);
+        if (!isNaN(parsedDims)) {
+          dimensions = parsedDims;
+        }
+      }
+    } catch (err) {
+      logger.warn(`[embeddings] Dynamic configuration resolution failed: ${(err as Error).message}. Using environment variables fallback.`);
+      // Environment variable configuration fallback
+      const envProvider = (process.env.EMBEDDING_PROVIDER ?? '').trim();
+      if (envProvider) {
+        provider = envProvider as any;
+      } else {
+        const hfKey = (process.env.HUGGINGFACE_API_KEY ?? '').trim();
+        if (hfKey) {
+          provider = 'huggingface';
+        }
+      }
+
+      const envModel = (process.env.EMBEDDING_MODEL ?? '').trim();
+      if (envModel) {
+        model = envModel;
+      }
+
+      const envDims = (process.env.EMBEDDING_DIMENSIONS ?? '').trim();
+      if (envDims) {
+        const parsedDims = parseInt(envDims, 10);
+        if (!isNaN(parsedDims)) {
+          dimensions = parsedDims;
+        }
+      }
     }
   }
 
-  // DO NOT fallback to global credentials (e.g. chat provider keys or baseURLs).
-  // Everything must be configured strictly separately.
+  // Resolve API key and Base URL using the 3-layer runtime config resolver
+  try {
+    const apiKeyResult = await getConfig('embedding.apiKey', { programId: batchId });
+    if (apiKeyResult.value) {
+      apiKey = String(apiKeyResult.value);
+    } else {
+      const hfKeyResult = await getConfig('huggingface.apiKey', { programId: batchId });
+      if (hfKeyResult.value) {
+        apiKey = String(hfKeyResult.value);
+      }
+    }
+
+    const baseUrlResult = await getConfig('embedding.baseUrl', { programId: batchId });
+    if (baseUrlResult.value) {
+      baseURL = String(baseUrlResult.value);
+    }
+  } catch (err) {
+    logger.warn(`[embeddings] Dynamic keys/URLs configuration resolution failed: ${(err as Error).message}`);
+  }
+
+  // Legacy fallback if not found in 3-layer config
   if (!apiKey) {
     if (provider === 'openai' || provider === 'custom') {
       apiKey = (process.env.EMBEDDING_API_KEY ?? '').trim();
@@ -159,7 +223,7 @@ async function callHfApiEmbedding(text: string, apiKey: string, model: string): 
 /**
  * Call OpenAI or OpenAI-compatible embeddings API.
  */
-async function callOpenAiEmbedding(text: string, apiKey: string, model: string, baseURL: string, dimensions?: number): Promise<number[]> {
+async function callOpenAiEmbedding(text: string, apiKey: string, model: string, baseURL: string, provider: string, dimensions?: number): Promise<number[]> {
   if (!apiKey) {
     throw new Error('API Key is required for OpenAI/Custom embedding provider');
   }
@@ -175,8 +239,8 @@ async function callOpenAiEmbedding(text: string, apiKey: string, model: string, 
       model,
     };
     
-    // Pass dimensions parameter only if configured AND model is text-embedding-3
-    if (dimensions && (model.includes('text-embedding-3') || dimensions !== 1024)) {
+    // Pass dimensions parameter only for openai provider's text-embedding-3 models
+    if (provider === 'openai' && dimensions && model.includes('text-embedding-3')) {
       body.dimensions = dimensions;
     }
 
@@ -217,31 +281,15 @@ function normalizeL2(vec: number[]): number[] {
   return vec.map(v => v / norm);
 }
 
-// ── In-process local pipeline (fallback) ───────────────────────────────
-const cachedEmbedders = new Map<string, FeatureExtractionPipeline>();
+// ── In-process local pipeline (disabled) ───────────────────────────────
 let isWarmed = false;
 
-async function getEmbedder(modelName: string): Promise<FeatureExtractionPipeline> {
-  let embedder = cachedEmbedders.get(modelName);
-  if (!embedder) {
-    transformersEnv.cacheDir = './.cache/transformers';
-    transformersEnv.allowLocalModels = true;
-    embedder = await pipeline(
-      'feature-extraction',
-      modelName,
-      { dtype: 'fp32' },
-    ) as FeatureExtractionPipeline;
-    cachedEmbedders.set(modelName, embedder);
-    isWarmed = true;
-  }
-  return embedder;
-}
-
-/** Warm up the in-process embedding pipeline. */
+/** Warm up the embedding pipeline. */
 export const warmEmbedder = async (): Promise<void> => {
-  const { provider, model } = await getActiveEmbeddingConfig();
-  if (provider !== 'local') return;
-  await getEmbedder(model);
+  const { provider } = await getActiveEmbeddingConfig();
+  if (provider === 'local') {
+    logger.warn('[embeddings] Local ONNX embedding warming skipped (Local ONNX fallback is disabled).');
+  }
 };
 
 /**
@@ -255,16 +303,13 @@ export const generateEmbedding = async (text: string, options?: { batchId?: stri
   }
   
   if (provider === 'openai' || provider === 'custom') {
-    return callOpenAiEmbedding(text, apiKey, model, baseURL, dimensions);
+    return callOpenAiEmbedding(text, apiKey, model, baseURL, provider, dimensions);
   }
 
-  // Fallback to local in-process ONNX pipeline
-  const embedder = await getEmbedder(model);
-  const output = await embedder(text, {
-    pooling: 'cls',
-    normalize: true,
-  });
-  return Array.from(output.data as Float32Array | number[]);
+  throw new Error(
+    `Local ONNX embedding fallback is disabled. ` +
+    `Please configure HUGGINGFACE_API_KEY, EMBEDDING_API_KEY, or set EMBEDDING_PROVIDER to an active cloud provider in your environment.`
+  );
 };
 
 /**

@@ -16,7 +16,7 @@ const PORT = parseInt(process.env.PORT || String(config.server.port), 10);
 
 let server: Server | undefined;
 
-if (config.server.env !== 'production') {
+if (config.server.env !== 'production' || !process.env.VERCEL) {
   server = app.listen(PORT, '0.0.0.0', async () => {
     startupLog.alert('backend listening', {
       port: PORT,

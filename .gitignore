@@ -171,6 +171,8 @@ scraper.js
 session_*.txt
 main_log.txt
 server-debug.log
+guide_me.md
+*sa-key*.json
 
 # ==============================================================================
 # Ignore Vite timestamp backups

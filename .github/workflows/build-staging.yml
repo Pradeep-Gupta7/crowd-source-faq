@@ -138,7 +138,7 @@ jobs:
 
             echo "🏥 Waiting for health check..."
             sleep 10
-            curl -sf --max-time 10 http://localhost:6767/api/health || echo "⚠️ Health check failed — check logs"
+            curl -sf --max-time 10 http://localhost:6767/csfaq/api/health || echo "⚠️ Health check failed — check logs"
 
             echo "✅ Staging deployment complete!"
 
