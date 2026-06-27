@@ -34,11 +34,10 @@ let _clientInitialized = false;
 let useLocalFallback = false;
 
 function buildLocalClient(): IORedis | null {
-  const localUrlExplicit = !!process.env.REDIS_LOCAL_TCP_URL;
-  if (!localUrlExplicit) {
+  const localUrl = process.env.REDIS_LOCAL_TCP_URL;
+  if (!localUrl || localUrl.trim() === '' || localUrl === '###' || localUrl.startsWith('#')) {
     return null;
   }
-  const localUrl = process.env.REDIS_LOCAL_TCP_URL;
   const localClient = new IORedis(localUrl, {
     maxRetriesPerRequest: 3,
     lazyConnect: true,
@@ -56,10 +55,11 @@ function buildRedisClient(): IORedis | null {
   const config = loadConfig();
   const url = config.redis.tcpUrl || process.env.REDIS_TCP_URL;
   const hasRemoteUrl = url && url !== '#' && url.trim() !== '';
-  const localUrlExplicit = !!process.env.REDIS_LOCAL_TCP_URL;
+  const localUrl = process.env.REDIS_LOCAL_TCP_URL;
+  const hasLocalUrl = localUrl && localUrl.trim() !== '' && localUrl !== '###' && !localUrl.startsWith('#');
   
   // Only enable Redis if explicitly configured or local fallback is explicitly set
-  if (!hasRemoteUrl && !localUrlExplicit) {
+  if (!hasRemoteUrl && !hasLocalUrl) {
     return null;
   }
   
@@ -152,6 +152,9 @@ export function getRedisRateLimitStore(prefix: string): Store | undefined {
               useLocalFallback = true;
               activeClient = buildLocalClient();
               _client = activeClient;
+            }
+            if (!activeClient) {
+              return getFailSafeReply(args);
             }
             try {
               return await (activeClient.call(...(args as [string, ...string[]])) as unknown as Promise<RedisReply>);
