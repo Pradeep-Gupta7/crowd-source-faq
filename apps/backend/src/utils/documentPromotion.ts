@@ -54,8 +54,11 @@ export async function promoteInsightToFaq(
   const faq = await FAQ.create({
     question: fallbackQuestion,
     answer: insight.answer_or_content,
-    tags: [],
-    category: 'document-promotion',
+    // Carry the LLM-generated structural metadata forward so it powers
+    // FAQ search/RAG retrieval (tags feed the FAQ text index; category
+    // feeds faceting). Falls back to safe defaults for legacy insights.
+    tags: insight.tags ?? [],
+    category: insight.category ?? 'General',
     status: 'approved',
     sourceType: 'manual', // existing union — document-promotion source would be additive; reusing 'manual' for v1
     createdBy: reviewedByUserId ?? null,

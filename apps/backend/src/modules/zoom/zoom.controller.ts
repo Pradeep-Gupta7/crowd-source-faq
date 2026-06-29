@@ -418,6 +418,11 @@ export async function processTranscriptPayloadInternal(
       question: item.question,
       answer_or_content: item.answer_or_content,
       confidence_score: item.confidence_score,
+      // Structural metadata tagged at ingestion by the AI pipeline.
+      category: item.category,
+      audience: item.audience,
+      tags: item.tags,
+      summary: item.summary,
       transcript_snippet: item.transcript_snippet,
       // ── Provenance ─────────────────────────────────────────────────────────
       sourcing,
@@ -618,17 +623,20 @@ export async function convertInsightToFAQ(req: Request, res: Response): Promise<
     const { default: FAQ } = await import('../faq/faq.model.js');
     const { generateEmbedding } = await import('../../utils/ai/embeddings.js');
 
-    const tags: string[] = [];
-    if (insight.question) {
+    // Prefer the LLM-generated structural tags; fall back to a naive
+    // word-split of the question for legacy insights with no tags. The
+    // tags feed the FAQ text index so they power search/RAG retrieval.
+    let tags: string[] = Array.isArray(insight.tags) ? insight.tags : [];
+    if (tags.length === 0 && insight.question) {
       const words = insight.question.toLowerCase().match(/\b\w{4,}\b/g) ?? [];
-      tags.push(...words.slice(0, 5));
+      tags = words.slice(0, 5);
     }
 
     const faq = await FAQ.create({
       question: insight.question ?? insight.answer_or_content.slice(0, 200),
       answer: insight.answer_or_content,
       tags,
-      category: 'Zoom',
+      category: insight.category ?? 'General',
       status: 'approved',
       sourceType: 'zoom_transcript',
       sourceMeetingId: (insight.meetingId as any)?._id ?? null,

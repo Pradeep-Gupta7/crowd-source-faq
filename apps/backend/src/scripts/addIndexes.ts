@@ -60,6 +60,61 @@ async function migrate() {
     }
   }
 
+  // ── Text indexes (drop-and-recreate) ──────────────────────────────────────
+  // MongoDB allows only ONE text index per collection, so a changed text-index
+  // spec (e.g. FAQ gaining `tags`) conflicts with the old one. We detect any
+  // existing text index with a different name and drop it before creating the
+  // new weighted one. Idempotent: re-running is a no-op once names match.
+  const textIndexes: { coll: string; name: string; key: Record<string, 'text'>; weights: Record<string, number> }[] = [
+    {
+      coll: 'yaksha_faq_faqs',
+      name: 'faq_text',
+      key: { question: 'text', answer: 'text', tags: 'text' },
+      weights: { question: 10, tags: 5, answer: 2 },
+    },
+    {
+      coll: 'yaksha_faq_document_insights',
+      name: 'insight_text',
+      key: { question: 'text', answer_or_content: 'text', summary: 'text', tags: 'text' },
+      weights: { question: 10, summary: 6, tags: 4, answer_or_content: 2 },
+    },
+    {
+      coll: 'yaksha_zoom_insights',
+      name: 'zoom_insight_text',
+      key: { question: 'text', answer_or_content: 'text', summary: 'text', tags: 'text' },
+      weights: { question: 10, summary: 6, tags: 4, answer_or_content: 2 },
+    },
+  ];
+
+  for (const ti of textIndexes) {
+    const coll = db.collection(ti.coll);
+    // Drop any stale text index (a text index reports key { _fts: 'text', ... }).
+    try {
+      const existing = await coll.indexes();
+      for (const ix of existing) {
+        const isText = Object.values(ix.key as Record<string, unknown>).includes('text');
+        if (isText && ix.name && ix.name !== ti.name) {
+          console.log(`Dropping stale text index "${ix.name}" on ${ti.coll}...`);
+          await coll.dropIndex(ix.name);
+        }
+      }
+    } catch (err: any) {
+      // NamespaceNotFound (26) — collection doesn't exist yet; createIndex makes it.
+      if (err.code !== 26) console.log(`  (skip stale-index scan on ${ti.coll}: ${err.message})`);
+    }
+    console.log(`Creating text index "${ti.name}" on ${ti.coll}...`);
+    try {
+      await coll.createIndex(ti.key, { name: ti.name, weights: ti.weights });
+      console.log('  ✓ Created');
+    } catch (err: any) {
+      if (err.code === 85 || err.code === 86) {
+        console.log('  ✓ Already exists — skipping');
+      } else {
+        throw err;
+      }
+    }
+  }
+
   console.log('\n✅ All indexes applied successfully.');
   console.log('Note: TTL index takes up to 60s to begin processing deletions.\n');
 

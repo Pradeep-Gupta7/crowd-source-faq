@@ -5,6 +5,22 @@ import mongoose, { Document, Schema as MongooseSchema, Types } from 'mongoose';
 export type ZoomMeetingStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'dead_letter';
 export type ZoomInsightType   = 'FAQ' | 'Announcement';
 
+/** Closed taxonomy — kept in sync with documentAiPipeline.INSIGHT_CATEGORIES. */
+export type InsightCategory =
+  | 'Onboarding'
+  | 'Schedule & Deadlines'
+  | 'Assignments & Projects'
+  | 'Policies & Rules'
+  | 'Technical Setup'
+  | 'Certification & Evaluation'
+  | 'Payment & Stipend'
+  | 'Logistics & Access'
+  | 'Career & Placement'
+  | 'General';
+
+/** Closed taxonomy — kept in sync with documentAiPipeline.INSIGHT_AUDIENCES. */
+export type InsightAudience = 'Intern' | 'Mentor' | 'Admin' | 'All';
+
 /**
  * How the transcript entered the system.
  * - webhook    : received via Zoom webhook (auto-download)
@@ -34,6 +50,15 @@ export interface IZoomInsight extends Document {
   question?: string;
   answer_or_content: string;
   confidence_score: number;
+  // ── Structural metadata (LLM-tagged at ingestion) ──────────────────────
+  /** Single closest category from the closed taxonomy. */
+  category: InsightCategory;
+  /** Primary audience this insight serves. */
+  audience: InsightAudience;
+  /** Normalized long-tail keyword tags ([a-z0-9-]). */
+  tags: string[];
+  /** 1-3 sentence summary — also indexed for keyword search recall. */
+  summary: string;
   status: 'pending_review' | 'approved' | 'rejected';
   reviewedBy?: Types.ObjectId;
   reviewedAt?: Date;
@@ -132,6 +157,30 @@ const zoomInsightSchema = new MongooseSchema<IZoomInsight>(
       min: 0,
       max: 1,
     },
+    // ── Structural metadata (LLM-tagged at ingestion) ──────────────────────
+    category: {
+      type: String,
+      enum: [
+        'Onboarding',
+        'Schedule & Deadlines',
+        'Assignments & Projects',
+        'Policies & Rules',
+        'Technical Setup',
+        'Certification & Evaluation',
+        'Payment & Stipend',
+        'Logistics & Access',
+        'Career & Placement',
+        'General',
+      ] as InsightCategory[],
+      default: 'General',
+    },
+    audience: {
+      type: String,
+      enum: ['Intern', 'Mentor', 'Admin', 'All'] as InsightAudience[],
+      default: 'All',
+    },
+    tags: { type: [String], default: [] },
+    summary: { type: String, default: '', maxlength: 600 },
     status: {
       type: String,
       enum: ['pending_review', 'approved', 'rejected'],
@@ -268,6 +317,14 @@ zoomMeetingSchema.index({ status: 1, nextRetryAt: 1, retryCount: 1 });
 zoomInsightSchema.index({ meetingId: 1 });
 zoomInsightSchema.index({ status: 1, type: 1 });
 zoomInsightSchema.index({ publishedFaqId: 1 }, { sparse: true });
+// Keyword search recall — index the term-dense summary alongside
+// question/answer; `tags` boosts exact keyword hits.
+zoomInsightSchema.index(
+  { question: 'text', answer_or_content: 'text', summary: 'text', tags: 'text' },
+  { weights: { question: 10, summary: 6, tags: 4, answer_or_content: 2 }, name: 'zoom_insight_text' },
+);
+// Faceted filtering / tag boosting at search time (status-scoped).
+zoomInsightSchema.index({ status: 1, category: 1, audience: 1 });
 
 // ─── Models ────────────────────────────────────────────────────────────────────
 

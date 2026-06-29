@@ -20,6 +20,7 @@
     "seed:badges": "tsx src/scripts/seedBadges.ts",
     "add:post": "tsx src/scripts/addPost.ts",
     "backfill:community": "tsx src/scripts/backfillCommunityEmbeddings.ts",
+    "backfill:insight-metadata": "tsx src/scripts/backfillInsightMetadata.ts",
     "backfill:public-metrics": "tsx src/scripts/backfillPublicMetrics.ts",
     "audit:data": "tsx src/scripts/auditData.ts",
     "cleanup:orphan-notifications": "tsx src/scripts/cleanupOrphanNotifications.ts",
