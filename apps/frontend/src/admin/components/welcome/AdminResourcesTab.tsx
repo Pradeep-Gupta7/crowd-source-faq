@@ -24,6 +24,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import adminApi from '../../utils/adminApi';
+import { useCloudinarySvgUpload } from '../../../hooks/useCloudinarySvgUpload';
 
 type ResourceKind = 'video' | 'pdf' | 'pptx' | 'svg' | 'markdown' | 'txt' | 'link';
 
@@ -99,6 +100,9 @@ export default function AdminResourcesTab({ programId, refreshKey }: Props): Rea
   const [knowledge, setKnowledge] = useState<KnowledgeSource[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Cloudinary SVG upload hook (only used when kind === 'svg')
+  const { upload: uploadSvg, uploading: svgUploading, error: svgError } = useCloudinarySvgUpload();
+
   // Create form state
   const [kind, setKind] = useState<ResourceKind>('pdf');
   const [title, setTitle] = useState('');
@@ -169,6 +173,11 @@ export default function AdminResourcesTab({ programId, refreshKey }: Props): Rea
         setError('External link must start with http:// or https://');
         return;
       }
+    } else if (kind === 'svg') {
+      if (!file) {
+        setError('Pick an SVG file to upload.');
+        return;
+      }
     } else if (!file) {
       setError('Pick a file to upload.');
       return;
@@ -176,21 +185,39 @@ export default function AdminResourcesTab({ programId, refreshKey }: Props): Rea
     setBusy(true);
     setError(null);
     try {
-      const formData = new FormData();
-      formData.append('kind', kind);
-      formData.append('title', title.trim());
-      formData.append('description', description);
-      formData.append('completionThreshold', String(completionThreshold));
-      formData.append('visible', visible ? 'true' : 'false');
-      if (tags.trim()) formData.append('tags', tags);
-      if (kind === 'link') {
-        formData.append('url', externalUrl);
-      } else if (file) {
-        formData.append('file', file);
+      if (kind === 'svg') {
+        // v1.70: SVG flowcharts upload directly to Cloudinary via the
+        // signed-URL flow. We get back { url, publicId } and POST those
+        // as plain JSON fields (not multipart).
+        const { url, publicId } = await uploadSvg(file!);
+        await adminApi.post('/admin/welcome/resources', {
+          kind: 'svg',
+          title: title.trim(),
+          description,
+          completionThreshold,
+          visible,
+          url,
+          publicId,
+          ...(tags.trim() ? { tags } : {}),
+        });
+      } else {
+        // All other kinds (video/pdf/pptx/markdown/txt): multipart upload.
+        const formData = new FormData();
+        formData.append('kind', kind);
+        formData.append('title', title.trim());
+        formData.append('description', description);
+        formData.append('completionThreshold', String(completionThreshold));
+        formData.append('visible', visible ? 'true' : 'false');
+        if (tags.trim()) formData.append('tags', tags);
+        if (kind === 'link') {
+          formData.append('url', externalUrl);
+        } else if (file) {
+          formData.append('file', file);
+        }
+        await adminApi.post('/admin/welcome/resources', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
       }
-      await adminApi.post('/admin/welcome/resources', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
       resetCreate();
       await fetchAll();
     } catch (err) {
@@ -350,8 +377,10 @@ export default function AdminResourcesTab({ programId, refreshKey }: Props): Rea
 
   return (
     <div className="space-y-8">
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-2">{error}</div>
+      {(error || svgError) && (
+        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-2">
+          {error || svgError}
+        </div>
       )}
 
       {/* ── Create Resource ─────────────────────────────────────────── */}
@@ -479,10 +508,10 @@ export default function AdminResourcesTab({ programId, refreshKey }: Props): Rea
 
           <button
             type="submit"
-            disabled={busy}
+            disabled={busy || (kind === 'svg' && svgUploading)}
             className="px-4 py-2 rounded-lg bg-accent text-white text-sm font-semibold disabled:opacity-50"
           >
-            {busy ? 'Adding…' : 'Add resource'}
+            {busy ? 'Adding…' : kind === 'svg' && svgUploading ? 'Uploading to Cloudinary…' : 'Add resource'}
           </button>
         </form>
       </section>
