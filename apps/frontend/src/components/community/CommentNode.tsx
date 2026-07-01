@@ -345,7 +345,7 @@ export default function CommentNode({
                       {deleteLoading ? '…' : '🗑'}
                     </button>
                   )}
-                  {idMatches(postAuthorId, currentUserId) && (
+                  {(idMatches(postAuthorId, currentUserId) || userRole === 'admin' || userRole === 'moderator') && (
                     <button
                       onClick={async () => {
                         if (isVerified) return;
