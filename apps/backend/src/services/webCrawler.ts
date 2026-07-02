@@ -141,9 +141,12 @@ export async function _runWithSeeds(seeds: CrawlSeed[]): Promise<CrawlStats> {
       continue;
     }
 
-    // Process the seed itself.
+    // Process the seed itself. Cache the result for the depth-1
+    // follow so we don't issue a second fetch for the same URL.
+    let seedFetched: Awaited<ReturnType<typeof fetchAndExtractPage>> | null = null;
     try {
       const fetched = await fetchAndExtractPage(seed.url);
+      seedFetched = fetched;
       if (!fetched.text || fetched.text.length < 1) {
         await upsertDiscovered(seed.url, {
           title: fetched.title,
@@ -169,14 +172,11 @@ export async function _runWithSeeds(seeds: CrawlSeed[]): Promise<CrawlStats> {
       continue; // no point iterating links if the seed failed
     }
 
-    if (!FOLLOW_LINKS) continue;
+    if (!FOLLOW_LINKS || !seedFetched) continue;
 
     // Depth-1 follow: same-domain links only, capped.
-    perSeedVisited.set(seed.url, 1);
-    const fetched = await fetchAndExtractPage(seed.url).catch(() => null);
-    if (!fetched) continue;
-    const linkBudget = Math.max(0, MAX_PER_SEED - (perSeedVisited.get(seed.url) ?? 1));
-    const siblingUrls = fetched.links
+    const linkBudget = Math.max(0, MAX_PER_SEED - 1);
+    const siblingUrls = seedFetched.links
       .filter((link) => {
         try { return new URL(link).hostname === seedDomain; } catch { return false; }
       })
