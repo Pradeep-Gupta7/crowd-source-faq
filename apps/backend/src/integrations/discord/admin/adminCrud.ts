@@ -498,3 +498,323 @@ export async function documentDelete(id: string): Promise<AdminCrudResult> {
 
 // Re-export errorEmbed so the command layer can compose with it.
 export { errorEmbed };
+
+// ═══════════════════════════════════════════════════════════════════════════
+// v1.69 — extend CRUD to the remaining 7 admin entities. Each handler
+// follows the same dispatch → embed-or-ephemeral pattern as the
+// FAQs/web-pages/documents block above. For ops that have no
+// matching REST endpoint, the handler returns an ephemeral
+// "this entity has no <op> endpoint" message.
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── Programs ──────────────────────────────────────────────────────────────
+
+export async function programList(page = 1): Promise<AdminCrudResult> {
+  const r = await dispatch<{ items?: any[]; total?: number; pages?: number }>({
+    method: 'GET', path: '/csfaq/api/courses/admin/all', query: { page, limit: PAGE_LIMIT },
+  });
+  if (!r.ok) return ephemeralError('Program list failed', r.error ?? 'unknown');
+  const items = r.data?.items ?? [];
+  const total = r.data?.total ?? 0;
+  const lines = items.length
+    ? items.map((p) =>
+        `• \`${p._id}\` — ${truncate(p.name ?? p.title ?? '(no name)', 90)} _[${p.status ?? 'unknown'}]_`)
+    : ['_no programs found_'];
+  const embed = new EmbedBuilder()
+    .setColor(COLOR_INFO).setTitle(`🎓 Programs — page ${page} (total ${total})`)
+    .setDescription(lines.join('\n').slice(0, 4000))
+    .setFooter({ text: `Use /admin programs view <id> for details. Showing ${items.length} of ${total}.` })
+    .setTimestamp();
+  return { embeds: [embed] };
+}
+
+export async function programView(id: string): Promise<AdminCrudResult> {
+  return ephemeralError('Program view', 'backend has no GET /:id endpoint — use list for now');
+}
+
+export async function programCreate(): Promise<AdminCrudResult> {
+  return ephemeralError('Program create', 'no REST endpoint yet — use the admin UI /admin/courses/new');
+}
+
+export async function programUpdate(id: string): Promise<AdminCrudResult> {
+  return ephemeralError('Program update', 'no REST endpoint for programs yet');
+}
+
+export async function programDelete(id: string): Promise<AdminCrudResult> {
+  const r = await dispatch<{ ok?: boolean }>({
+    method: 'DELETE', path: `/csfaq/api/courses/${encodeURIComponent(id)}`,
+  });
+  if (!r.ok) return ephemeralError('Program delete failed', r.error ?? `id ${id} not found`);
+  return { ephemeral: `🗑️ Deleted program \`${id}\`.` };
+}
+
+// ── Batches ───────────────────────────────────────────────────────────────
+
+export async function batchList(page = 1): Promise<AdminCrudResult> {
+  const r = await dispatch<{ items?: any[]; total?: number; pages?: number }>({
+    method: 'GET', path: '/csfaq/api/batches/admin/all', query: { page, limit: PAGE_LIMIT },
+  });
+  if (!r.ok) return ephemeralError('Batch list failed', r.error ?? 'unknown');
+  const items = r.data?.items ?? [];
+  const total = r.data?.total ?? 0;
+  const lines = items.length
+    ? items.map((b) =>
+        `• \`${b._id}\` — ${truncate(b.name ?? '(no name)', 90)} _[${b.status ?? 'unknown'}]_`)
+    : ['_no batches found_'];
+  const embed = new EmbedBuilder()
+    .setColor(COLOR_INFO).setTitle(`📦 Batches — page ${page} (total ${total})`)
+    .setDescription(lines.join('\n').slice(0, 4000))
+    .setFooter({ text: `Use /admin batches view <id> for details. Showing ${items.length} of ${total}.` })
+    .setTimestamp();
+  return { embeds: [embed] };
+}
+
+export async function batchView(id: string): Promise<AdminCrudResult> {
+  const r = await dispatch<any>({ method: 'GET', path: `/csfaq/api/batches/${encodeURIComponent(id)}` });
+  if (!r.ok || !r.data) return ephemeralError('Batch view failed', r.error ?? `id ${id} not found`);
+  const b = r.data;
+  const embed = new EmbedBuilder()
+    .setColor(COLOR_INFO).setTitle(`📦 Batch ${b._id}`)
+    .addFields(
+      { name: 'Name', value: truncate(b.name ?? '(none)', 1024), inline: false },
+      { name: 'Status', value: String(b.status ?? '—'), inline: true },
+      { name: 'Is default', value: String(b.isDefault ?? '—'), inline: true },
+    )
+    .setFooter({ text: 'Use /admin batches update <id> ... or /admin batches delete <id>' })
+    .setTimestamp();
+  return { embeds: [embed] };
+}
+
+export async function batchCreate(): Promise<AdminCrudResult> {
+  return {
+    ephemeral: '📝 **Create Batch** — send me the fields:\n```\nname: Spring 2026 Cohort\nstartDate: 2026-04-01\nendDate: 2026-07-01\n```',
+  };
+}
+
+export async function batchUpdate(id: string): Promise<AdminCrudResult> {
+  return {
+    ephemeral: `📝 **Update Batch ${id}** — send me the fields:\n\`\`\`\nname: <new name>\nstatus: <active|archived>\n\`\`\``,
+  };
+}
+
+export async function batchDelete(id: string): Promise<AdminCrudResult> {
+  const r = await dispatch<{ ok?: boolean }>({
+    method: 'DELETE', path: `/csfaq/api/batches/${encodeURIComponent(id)}`,
+  });
+  if (!r.ok) return ephemeralError('Batch delete failed', r.error ?? `id ${id} not found`);
+  return { ephemeral: `🗑️ Deleted batch \`${id}\`.` };
+}
+
+// ── Golden tickets ───────────────────────────────────────────────────────
+
+export async function goldenList(page = 1): Promise<AdminCrudResult> {
+  const r = await dispatch<{ items?: any[]; total?: number }>({
+    method: 'GET', path: '/csfaq/api/admin/golden-tickets', query: { page, limit: PAGE_LIMIT },
+  });
+  if (!r.ok) return ephemeralError('Golden-ticket list failed', r.error ?? 'unknown');
+  const items = r.data?.items ?? [];
+  const lines = items.length
+    ? items.map((g) =>
+        `• \`${g._id}\` — ${truncate(g.reason ?? '(no reason)', 80)} _[${g.status ?? 'unknown'}]_`)
+    : ['_no golden tickets found_'];
+  const embed = new EmbedBuilder()
+    .setColor(COLOR_INFO).setTitle(`🎟️ Golden tickets — total ${r.data?.total ?? 0}`)
+    .setDescription(lines.join('\n').slice(0, 4000))
+    .setFooter({ text: 'No GET /:id endpoint — use /admin golden resolve|reject|ban <id>' })
+    .setTimestamp();
+  return { embeds: [embed] };
+}
+
+export async function goldenView(_id: string): Promise<AdminCrudResult> {
+  return ephemeralError('Golden-ticket view', 'no GET /:id endpoint — use resolve/reject/ban actions');
+}
+
+export async function goldenCreate(): Promise<AdminCrudResult> {
+  return ephemeralError('Golden-ticket create', 'no POST endpoint — promotions happen via /admin/auto-answer or user SP conversion');
+}
+
+export async function goldenUpdate(id: string): Promise<AdminCrudResult> {
+  return {
+    ephemeral: `🎟️ **Golden ticket ${id}** — only resolve/reject/ban are supported. Use:\n- \`/admin golden resolve ${id}\`\n- \`/admin golden reject ${id}\`\n- \`/admin golden ban ${id}\``,
+  };
+}
+
+export async function goldenDelete(id: string): Promise<AdminCrudResult> {
+  return ephemeralError('Golden-ticket delete', 'no DELETE endpoint — use reject or ban instead');
+}
+
+// ── Support tickets ──────────────────────────────────────────────────────
+
+export async function supportList(page = 1): Promise<AdminCrudResult> {
+  const r = await dispatch<{ items?: any[]; total?: number }>({
+    method: 'GET', path: '/csfaq/api/support/requests', query: { page, limit: PAGE_LIMIT },
+  });
+  if (!r.ok) return ephemeralError('Support list failed', r.error ?? 'unknown');
+  const items = r.data?.items ?? [];
+  const total = r.data?.total ?? 0;
+  const lines = items.length
+    ? items.map((s) =>
+        `• \`${s._id}\` — ${truncate(s.subject ?? s.title ?? '(no subject)', 80)} _[${s.status ?? 'unknown'}]_`)
+    : ['_no support tickets found_'];
+  const embed = new EmbedBuilder()
+    .setColor(COLOR_INFO).setTitle(`🎫 Support tickets — total ${total}`)
+    .setDescription(lines.join('\n').slice(0, 4000))
+    .setFooter({ text: 'Use /admin support view <id> for details' })
+    .setTimestamp();
+  return { embeds: [embed] };
+}
+
+export async function supportView(id: string): Promise<AdminCrudResult> {
+  const r = await dispatch<any>({ method: 'GET', path: `/csfaq/api/support/requests/${encodeURIComponent(id)}` });
+  if (!r.ok || !r.data) return ephemeralError('Support view failed', r.error ?? `id ${id} not found`);
+  const s = r.data;
+  const embed = new EmbedBuilder()
+    .setColor(COLOR_INFO).setTitle(`🎫 Support ${s._id}`)
+    .addFields(
+      { name: 'Subject', value: truncate(s.subject ?? s.title ?? '(none)', 1024), inline: false },
+      { name: 'Status', value: String(s.status ?? '—'), inline: true },
+      { name: 'Category', value: String(s.category ?? '—'), inline: true },
+    )
+    .setFooter({ text: 'PATCH /:id/status to change status' })
+    .setTimestamp();
+  return { embeds: [embed] };
+}
+
+export async function supportCreate(): Promise<AdminCrudResult> {
+  return {
+    ephemeral: '📝 **Create Support Ticket** — no admin-create endpoint. Tickets are created by users from /support/new.',
+  };
+}
+
+export async function supportUpdate(id: string): Promise<AdminCrudResult> {
+  return {
+    ephemeral: `📝 **Update Support ${id}** — send the new status:\n\`\`\`\nstatus: <open|in_progress|resolved|closed>\n\`\`\``,
+  };
+}
+
+export async function supportDelete(id: string): Promise<AdminCrudResult> {
+  const r = await dispatch<{ ok?: boolean }>({
+    method: 'DELETE', path: `/csfaq/api/support/requests/${encodeURIComponent(id)}`,
+  });
+  if (!r.ok) return ephemeralError('Support delete failed', r.error ?? `id ${id} not found`);
+  return { ephemeral: `🗑️ Deleted support ticket \`${id}\`.` };
+}
+
+// ── Users ───────────────────────────────────────────────────────────────
+
+export async function userList(page = 1): Promise<AdminCrudResult> {
+  const r = await dispatch<{ items?: any[]; total?: number }>({
+    method: 'GET', path: '/csfaq/api/admin/users', query: { page, limit: PAGE_LIMIT },
+  });
+  if (!r.ok) return ephemeralError('User list failed', r.error ?? 'unknown');
+  const items = r.data?.items ?? [];
+  const total = r.data?.total ?? 0;
+  const lines = items.length
+    ? items.map((u) =>
+        `• \`${u._id}\` — ${truncate(u.name ?? u.email ?? '(no name)', 80)} _[${u.role ?? 'user'}]_`)
+    : ['_no users found_'];
+  const embed = new EmbedBuilder()
+    .setColor(COLOR_INFO).setTitle(`👥 Users — total ${total}`)
+    .setDescription(lines.join('\n').slice(0, 4000))
+    .setFooter({ text: 'No GET /:id endpoint — list only' })
+    .setTimestamp();
+  return { embeds: [embed] };
+}
+
+export async function userView(_id: string): Promise<AdminCrudResult> {
+  return ephemeralError('User view', 'no GET /:id endpoint — use list to find the user id');
+}
+
+export async function userCreate(): Promise<AdminCrudResult> {
+  return ephemeralError('User create', 'use the registration endpoint or admin UI /admin/users — no admin-via-bot flow');
+}
+
+export async function userUpdate(id: string): Promise<AdminCrudResult> {
+  return {
+    ephemeral: `📝 **Update User ${id}** — send the new fields:\n\`\`\`\nrole: <user|admin|moderator|ai_moderator>\n\`\`\``,
+  };
+}
+
+export async function userDelete(id: string): Promise<AdminCrudResult> {
+  const r = await dispatch<{ ok?: boolean }>({
+    method: 'DELETE', path: `/csfaq/api/auth/users/${encodeURIComponent(id)}`,
+  });
+  if (!r.ok) return ephemeralError('User delete failed', r.error ?? `id ${id} not found`);
+  return { ephemeral: `🗑️ Deleted user \`${id}\`.` };
+}
+
+// ── Feature flags ───────────────────────────────────────────────────────
+
+export async function flagList(page = 1): Promise<AdminCrudResult> {
+  const r = await dispatch<{ items?: any[]; total?: number }>({
+    method: 'GET', path: '/csfaq/api/feature-flags', query: { page, limit: PAGE_LIMIT },
+  });
+  if (!r.ok) return ephemeralError('Flag list failed', r.error ?? 'unknown');
+  const items = r.data?.items ?? [];
+  const total = r.data?.total ?? 0;
+  const lines = items.length
+    ? items.map((f) =>
+        `• \`${f.key ?? f._id}\` — ${truncate(f.label ?? f.description ?? '', 70)} ${f.enabled ? '✅' : '❌'}`)
+    : ['_no flags found_'];
+  const embed = new EmbedBuilder()
+    .setColor(COLOR_INFO).setTitle(`🚩 Feature flags — total ${total}`)
+    .setDescription(lines.join('\n').slice(0, 4000))
+    .setFooter({ text: 'Use /admin flags update <key> enabled=true|false to toggle' })
+    .setTimestamp();
+  return { embeds: [embed] };
+}
+
+export async function flagView(_id: string): Promise<AdminCrudResult> {
+  return ephemeralError('Flag view', 'use list to see the key, then PATCH to toggle');
+}
+
+export async function flagCreate(): Promise<AdminCrudResult> {
+  return ephemeralError('Flag create', 'no admin POST endpoint — flags are added via the FEATURE_FLAGS registry at startup');
+}
+
+export async function flagUpdate(id: string): Promise<AdminCrudResult> {
+  return {
+    ephemeral: `🚩 **Toggle flag \`${id}\`** — send the new state:\n\`\`\`\nenabled: <true|false>\n\`\`\``,
+  };
+}
+
+export async function flagDelete(_id: string): Promise<AdminCrudResult> {
+  return ephemeralError('Flag delete', 'no DELETE endpoint — flags are removed via the FEATURE_FLAGS registry at startup');
+}
+
+// ── Audit logs ─────────────────────────────────────────────────────────
+
+export async function auditList(page = 1): Promise<AdminCrudResult> {
+  const r = await dispatch<{ items?: any[]; total?: number }>({
+    method: 'GET', path: '/csfaq/api/admin/audit-logs', query: { page, limit: PAGE_LIMIT },
+  });
+  if (!r.ok) return ephemeralError('Audit list failed', r.error ?? 'unknown');
+  const items = r.data?.items ?? [];
+  const total = r.data?.total ?? 0;
+  const lines = items.length
+    ? items.map((a) =>
+        `• \`${a._id}\` — ${truncate(a.action ?? a.message ?? '(no action)', 80)} _[${a.level ?? 'info'}]_`)
+    : ['_no audit entries found_'];
+  const embed = new EmbedBuilder()
+    .setColor(COLOR_INFO).setTitle(`📜 Audit logs — total ${total}`)
+    .setDescription(lines.join('\n').slice(0, 4000))
+    .setFooter({ text: 'Read-only — view only' })
+    .setTimestamp();
+  return { embeds: [embed] };
+}
+
+export async function auditView(_id: string): Promise<AdminCrudResult> {
+  return ephemeralError('Audit view', 'no GET /:id endpoint — list is read-only');
+}
+
+export async function auditCreate(): Promise<AdminCrudResult> {
+  return ephemeralError('Audit create', 'audit logs are append-only — written by other actions');
+}
+
+export async function auditUpdate(_id: string): Promise<AdminCrudResult> {
+  return ephemeralError('Audit update', 'audit logs are append-only and immutable');
+}
+
+export async function auditDelete(_id: string): Promise<AdminCrudResult> {
+  return ephemeralError('Audit delete', 'audit logs are immutable; no DELETE endpoint exists');
+}

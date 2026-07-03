@@ -5,13 +5,13 @@
  * bot can manage. Built with Discord subcommand groups so admins can
  * type `/crud <entity> <op> ...` (e.g. `/crud faqs list page:2`).
  *
- * Layout (3 entity groups × 5 ops = 15 subcommands):
- *   faqs      list [page], view <id>, create, update <id>, delete <id>
- *   web-pages list [page], view <id>, create, update <id>, delete <id>
- *   documents list [page], view <id>, create, update <id>, delete <id>
+ * Layout: 10 entity groups × 5 ops = 50 subcommands.
+ *   faqs, web-pages, documents, programs, batches, golden-tickets,
+ *   support-tickets, users, feature-flags, audit-logs ×
+ *   list, view, create, update, delete
  *
  * Why one command + groups (instead of one command per entity):
- *   - Discord's 25-subcommand-per-group cap would force us to split
+ *   - Discord's 25-subcommand-per-group cap forces us to split
  *     entities into multiple commands as the list grows. Groups
  *     inside one command are cleaner and easier to extend.
  *   - The handler layer (`admin/adminCrud.ts`) is already entity-
@@ -30,55 +30,49 @@ import {
 } from 'discord.js';
 import type { BotConfig } from '../discordBot.js';
 import { isAdmin } from '../events/interactionCreate.js';
-import {
-  faqList,
-  faqView,
-  faqCreate,
-  faqUpdate,
-  faqDelete,
-  webPageList,
-  webPageView,
-  webPageCreate,
-  webPageUpdate,
-  webPageDelete,
-  documentList,
-  documentView,
-  documentCreate,
-  documentUpdate,
-  documentDelete,
-  type AdminCrudResult,
-} from '../admin/adminCrud.js';
+import * as crud from '../admin/adminCrud.js';
 
-type EntityKey = 'faqs' | 'web-pages' | 'documents';
+type EntityKey =
+  | 'faqs'
+  | 'web-pages'
+  | 'documents'
+  | 'programs'
+  | 'batches'
+  | 'golden-tickets'
+  | 'support-tickets'
+  | 'users'
+  | 'feature-flags'
+  | 'audit-logs';
 type OpKey = 'list' | 'view' | 'create' | 'update' | 'delete';
 
-const ENTITIES: EntityKey[] = ['faqs', 'web-pages', 'documents'];
+const ENTITIES: EntityKey[] = [
+  'faqs', 'web-pages', 'documents',
+  'programs', 'batches', 'golden-tickets',
+  'support-tickets', 'users', 'feature-flags',
+  'audit-logs',
+];
 const OPS: OpKey[] = ['list', 'view', 'create', 'update', 'delete'];
 
 /** Dispatch table — `adminCrud.ts` exports one fn per (entity, op). */
-const HANDLERS: Record<EntityKey, Record<OpKey, (args: { id?: string; page?: number }) => Promise<AdminCrudResult>>> = {
-  faqs: {
-    list:   ({ page })    => faqList(page ?? 1),
-    view:   ({ id })      => { if (!id) throw new Error('view requires <id>'); return faqView(id); },
-    create: ()            => faqCreate(),
-    update: ({ id })      => { if (!id) throw new Error('update requires <id>'); return faqUpdate(id); },
-    delete: ({ id })      => { if (!id) throw new Error('delete requires <id>'); return faqDelete(id); },
-  },
-  'web-pages': {
-    list:   ({ page })    => webPageList(page ?? 1),
-    view:   ({ id })      => { if (!id) throw new Error('view requires <id>'); return webPageView(id); },
-    create: ()            => webPageCreate(),
-    update: ({ id })      => { if (!id) throw new Error('update requires <id>'); return webPageUpdate(id); },
-    delete: ({ id })      => { if (!id) throw new Error('delete requires <id>'); return webPageDelete(id); },
-  },
-  documents: {
-    list:   ({ page })    => documentList(page ?? 1),
-    view:   ({ id })      => { if (!id) throw new Error('view requires <id>'); return documentView(id); },
-    create: ()            => documentCreate(),
-    update: ({ id })      => { if (!id) throw new Error('update requires <id>'); return documentUpdate(id); },
-    delete: ({ id })      => { if (!id) throw new Error('delete requires <id>'); return documentDelete(id); },
-  },
+const HANDLERS: Record<EntityKey, Record<OpKey, (args: { id?: string; page?: number }) => Promise<crud.AdminCrudResult>>> = {
+  'faqs':          { list: ({ page }) => crud.faqList(page ?? 1),          view: ({ id }) => require_id(id, crud.faqView),         create: () => crud.faqCreate(),          update: ({ id }) => require_id(id, crud.faqUpdate),          delete: ({ id }) => require_id(id, crud.faqDelete) },
+  'web-pages':     { list: ({ page }) => crud.webPageList(page ?? 1),     view: ({ id }) => require_id(id, crud.webPageView),     create: () => crud.webPageCreate(),      update: ({ id }) => require_id(id, crud.webPageUpdate),    delete: ({ id }) => require_id(id, crud.webPageDelete) },
+  'documents':     { list: ({ page }) => crud.documentList(page ?? 1),   view: ({ id }) => require_id(id, crud.documentView),   create: () => crud.documentCreate(),    update: ({ id }) => require_id(id, crud.documentUpdate),  delete: ({ id }) => require_id(id, crud.documentDelete) },
+  'programs':      { list: ({ page }) => crud.programList(page ?? 1),    view: ({ id }) => require_id(id, crud.programView),    create: () => crud.programCreate(),     update: ({ id }) => require_id(id, crud.programUpdate),   delete: ({ id }) => require_id(id, crud.programDelete) },
+  'batches':       { list: ({ page }) => crud.batchList(page ?? 1),      view: ({ id }) => require_id(id, crud.batchView),      create: () => crud.batchCreate(),       update: ({ id }) => require_id(id, crud.batchUpdate),     delete: ({ id }) => require_id(id, crud.batchDelete) },
+  'golden-tickets':{ list: ({ page }) => crud.goldenList(page ?? 1),     view: ({ id }) => crud.goldenView(id ?? ''),           create: () => crud.goldenCreate(),       update: ({ id }) => require_id(id, crud.goldenUpdate),   delete: ({ id }) => require_id(id, crud.goldenDelete) },
+  'support-tickets':{list: ({ page }) => crud.supportList(page ?? 1),   view: ({ id }) => require_id(id, crud.supportView),   create: () => crud.supportCreate(),    update: ({ id }) => require_id(id, crud.supportUpdate),  delete: ({ id }) => require_id(id, crud.supportDelete) },
+  'users':         { list: ({ page }) => crud.userList(page ?? 1),        view: ({ id }) => crud.userView(id ?? ''),            create: () => crud.userCreate(),        update: ({ id }) => require_id(id, crud.userUpdate),     delete: ({ id }) => require_id(id, crud.userDelete) },
+  'feature-flags': { list: ({ page }) => crud.flagList(page ?? 1),      view: ({ id }) => crud.flagView(id ?? ''),             create: () => crud.flagCreate(),       update: ({ id }) => require_id(id, crud.flagUpdate),    delete: ({ id }) => require_id(id, crud.flagDelete) },
+  'audit-logs':    { list: ({ page }) => crud.auditList(page ?? 1),      view: ({ id }) => crud.auditView(id ?? ''),            create: () => crud.auditCreate(),      update: ({ id }) => require_id(id, crud.auditUpdate),   delete: ({ id }) => require_id(id, crud.auditDelete) },
 };
+
+function require_id(id: string | undefined, fn: (id: string) => Promise<crud.AdminCrudResult>): Promise<crud.AdminCrudResult> {
+  if (!id) {
+    return Promise.resolve({ ephemeral: '❌ This operation requires an `<id>` argument.' });
+  }
+  return fn(id);
+}
 
 /**
  * Build the SlashCommandBuilder declaratively. Each entity is a
@@ -88,11 +82,10 @@ const HANDLERS: Record<EntityKey, Record<OpKey, (args: { id?: string; page?: num
 export const crudCommandData = (() => {
   const builder = new SlashCommandBuilder()
     .setName('crud')
-    .setDescription('[admin] CRUD on FAQs, web pages, and documents')
+    .setDescription('[admin] CRUD on FAQs, web pages, documents, programs, batches, golden-tickets, support-tickets, users, feature-flags, audit-logs')
     .setDefaultMemberPermissions(0); // server-side double-check via isAdmin
 
   for (const entity of ENTITIES) {
-    // Subcommand group per entity.
     builder.addSubcommandGroup((group) => {
       group.setName(entity).setDescription(`CRUD for ${entity}`);
       for (const op of OPS) {
@@ -126,7 +119,7 @@ export const crudCommandData = (() => {
 /** Reply helper — handles both `embeds` and `ephemeral` result shapes. */
 async function replyResult(
   interaction: ChatInputCommandInteraction,
-  result: AdminCrudResult,
+  result: crud.AdminCrudResult,
 ): Promise<void> {
   if ('ephemeral' in result && result.ephemeral) {
     await interaction.reply({ content: result.ephemeral, ephemeral: true });
