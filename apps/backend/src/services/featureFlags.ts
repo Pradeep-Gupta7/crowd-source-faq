@@ -157,6 +157,25 @@ export const FEATURE_FLAGS = {
       'the button is hidden from the UI. Toggle on to re-enable the chatbot for users.',
     category: 'ai',
   },
+  // v1.71 — Phase 8 R3: hourly embedding-warm cron. When enabled
+  // (default), `bootstrap/startup.ts` registers an `embedding-warm`
+  // cron that calls `embedUnprocessedKnowledge()` every 60 minutes.
+  // This replaces the "embed on every search request" behaviour that
+  // was hammering the embedder endpoint and producing `[knowledgeBase]
+  // Failed to generate embedding for query ...` errors. The manual
+  // `POST /csfaq/api/warm` endpoint is still available for ad-hoc
+  // runs and is unaffected by this flag.
+  embeddingWarmCron: {
+    default: true,
+    label: 'Embedding Warm Cron (hourly)',
+    description:
+      'When enabled, the server runs an hourly cron that back-fills ' +
+      'missing embeddings on TranscriptKnowledge rows. Search queries ' +
+      'degrade to text-only matching when this flag is off or when the ' +
+      'embedder endpoint is unreachable. Disable to skip the cron (the ' +
+      'manual POST /csfaq/api/warm endpoint still works).',
+    category: 'ai',
+  },
   // Phase 8 — auto-discover mode for the WebPage collection. When
   // enabled, the bootstrap cron (every 6h) calls webCrawler.runAutoDiscover
   // which fetches each configured seed URL, follows same-domain links

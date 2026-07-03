@@ -210,6 +210,43 @@ export async function startup(config: any): Promise<void> {
     logger.info('[server] auto-answer cron disabled (communityAutoAnswer feature flag off)');
   }
 
+  // v1.71 — hourly embedding-warm cron. Replaces the old per-request
+  // embed path that was timing out against the Hugging Face / local
+  // model. Now: cronManager ticks every 60 minutes and calls
+  // `embedUnprocessedKnowledge()` which back-fills any
+  // TranscriptKnowledge rows that are still missing an embedding
+  // (limit: KNOWLEDGE_EMBEDDING_BATCH * 5 per tick). The actual
+  // `/csfaq/api/search?q=...` endpoint no longer touches the embedder
+  // on the hot path — it degrades to text-only matching when the
+  // vector search can't run (see `search.controller.ts`). Manual
+  // trigger via `POST /csfaq/api/warm` still works.
+  if (await featureFlags.isEnabled('embeddingWarmCron')) {
+    const { embedUnprocessedKnowledge } = await import('../modules/knowledge/knowledge-base.service.js');
+    const embeddingWarmIntervalMs = 60 * 60 * 1000; // 1 hour
+    cronManager.register({
+      name: 'embedding-warm',
+      handler: async () => {
+        try {
+          const count = await embedUnprocessedKnowledge();
+          if (count > 0) {
+            logger.info(`[embedding-warm] cron embedded ${count} knowledge entries`);
+          }
+          // count === 0 is the common steady-state; stay quiet.
+        } catch (e: unknown) {
+          // Don't crash the cron loop — log and let the next tick retry.
+          logger.warn(`[embedding-warm] cron failed: ${(e as Error).message}`);
+        }
+      },
+      intervalMs: embeddingWarmIntervalMs,
+      runOnStartup: false, // opt-out of running on boot — first tick is 1h later
+    });
+    logger.info(
+      `[server] embedding-warm cron registered (every ${embeddingWarmIntervalMs / 1000}s)`,
+    );
+  } else {
+    logger.info('[server] embedding-warm cron disabled (embeddingWarmCron feature flag off)');
+  }
+
   // Phase 8 — webAutoDiscover cron. Fetches each configured seed URL
   // every 6 hours, follows same-domain links to depth 1, and upserts
   // the results as `source='auto_discovered'` WebPage rows with

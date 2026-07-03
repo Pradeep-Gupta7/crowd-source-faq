@@ -522,8 +522,31 @@ export const checkFAQMatch = async (req: Request<Record<string, never>, Record<s
       return;
     }
 
-    // Generate embedding for the user's question
-    const embedding = await generateQueryEmbedding(query.trim());
+    // v1.71 — Phase 8 R3: do NOT 500 on a flaky embedder during
+    // duplicate-check. Previously `checkFAQMatch` was the most visible
+    // offender: every community "post a question" attempt called
+    // `generateQueryEmbedding` and 500ed on a connection error, so the
+    // user couldn't even submit their question. Now: try the embed;
+    // if it fails, return `{ matched: false, faq: null }` so the post
+    // goes through (the post-create endpoint still gates on
+    // `checkDuplicate` which itself already has a graceful
+    // `.catch` around its own embed call). The hourly `embedding-warm`
+    // cron back-fills embeddings in the background.
+    let embedding: number[] | null = null;
+    try {
+      embedding = await generateQueryEmbedding(query.trim());
+    } catch (embErr) {
+      adminLog.warn(
+        `[checkFAQMatch] Failed to generate embedding for query '${query}': ${(embErr as Error).message}. Returning no-match.`,
+      );
+    }
+
+    if (embedding == null) {
+      // Degrade gracefully — no embedding means no vector match,
+      // which we surface to the caller as "no match" rather than a 500.
+      res.json({ matched: false, faq: null });
+      return;
+    }
 
     // Run vector search against the FAQ collection
     const mongoose = (await import('mongoose')).default;
