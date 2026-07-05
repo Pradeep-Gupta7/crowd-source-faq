@@ -12,7 +12,6 @@ import { Request, Response } from 'express';
 import { Types } from 'mongoose';
 import CommunityPost from './community-post.model.js';
 import FAQ from '../faq/faq.model.js';
-import { generateEmbedding } from '../../utils/ai/embeddings.js';
 import User, { calculateTier } from '../auth/user.model.js';
 import { invalidateCache } from '../../utils/http/cache.js';
 import { dispatchNotification } from '../../utils/http/notificationDispatcher.js';
@@ -81,13 +80,11 @@ export const createPost = async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
-    // Generate vector embedding for semantic search
-    let embedding: number[] | undefined;
-    try {
-      embedding = await generateEmbedding(`Question: ${title}. Description: ${body}`);
-    } catch (err) {
-      communityLog.warn(`Failed to generate embedding for post: ${(err as Error).message}`);
-    }
+    // Skip live embedding on create. The weekly batch cron (startup.ts
+    // embedding-warm) and Atlas vector index handle embeddings offline;
+    // live calls here would just produce zero-vectors (since no embedding
+    // infra is configured in production). Retrieval is text-based and
+    // doesn't need them. See apps/backend/src/utils/ai/embeddings.ts.
 
     // Validate attachments: cap at 4, drop malformed entries, ensure URLs
     // are on our Cloudinary account. Cloudinary's free plan caps the asset
@@ -180,7 +177,7 @@ export const createPost = async (req: Request, res: Response): Promise<void> => 
       body: sanitizeHtml(body),
       author: req.user!._id,
       status: 'unanswered',
-      embedding,
+      // embedding omitted — assigned offline by the weekly batch cron
       batchId: resolvedBatchId,
       tags: safeTags,
       attachments: safeAttachments,
@@ -524,14 +521,8 @@ export const updatePost = async (req: Request, res: Response): Promise<void> => 
         : [];
     }
 
-    // Recalculate embedding if title or body changes
-    if (title !== undefined || body !== undefined) {
-      try {
-        post.embedding = await generateEmbedding(`Question: ${post.title}. Description: ${post.body}`);
-      } catch (err) {
-        communityLog.warn(`Failed to generate embedding for updated post: ${(err as Error).message}`);
-      }
-    }
+    // Embedding recalculation skipped — handled by weekly batch cron
+    // (see startup.ts embedding-warm). Saves one API call per edit.
 
     await post.save();
     await post.populate('author', 'name');
