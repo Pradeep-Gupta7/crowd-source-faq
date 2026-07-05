@@ -80,16 +80,25 @@ export const warmEmbedder = async (): Promise<void> => {
  * Generate an embedding for a DOCUMENT (FAQ, post, etc.).
  */
 export const generateEmbedding = async (text: string, options?: { batchId?: string | null }): Promise<number[]> => {
+  const { dimensions } = await getActiveEmbeddingConfig(options?.batchId);
   try {
     const { model, baseURL, apiKey } = await getActiveEmbeddingConfig(options?.batchId);
     return await callCustomEmbedding(text, apiKey, model, baseURL);
   } catch (err) {
+    // No embedding infrastructure configured → silently return a zero
+    // vector of the correct dimensionality. Callers decide what to do
+    // with it (duplicate detection filters via length match, retrieval
+    // is text-based and ignores embeddings entirely).
+    //
+    // In dev/test, surface the failure so missing config is loud.
     if (process.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'development') {
-      const { dimensions } = await getActiveEmbeddingConfig(options?.batchId);
-      logger.warn(`[embeddings] Custom embedding API failed, falling back to mock vector: ${(err as Error).message}`);
-      return new Array(dimensions).fill(0);
+      logger.warn(`[embeddings] Custom embedding API failed, falling back to zero vector: ${(err as Error).message}`);
+    } else {
+      // Production: don't spam Discord. info-level so it lands in
+      // logs but not the alert channel. Sentry still gets it.
+      logger.info(`[embeddings] API unavailable, returning zero vector (dim=${dimensions})`);
     }
-    throw err;
+    return new Array(dimensions).fill(0);
   }
 };
 
