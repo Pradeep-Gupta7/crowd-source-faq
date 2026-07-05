@@ -77,6 +77,7 @@ const AdminZoomAssessmentsPage = lazy(() => import('../admin/pages/AdminZoomAsse
 const AdminZoomQuestionsPage = lazy(() => import('../admin/pages/AdminZoomQuestionsPage'));
 const AdminProjectsPage = lazy(() => import('../admin/pages/AdminProjectsPage'));
 const AdminContextSources = lazy(() => import('../admin/pages/AdminContextSources'));
+const AdminTrain = lazy(() => import('../admin/pages/AdminTrain'));
 const AdminSupportLayout = lazy(() => import('../admin/components/layout/AdminSupportLayout'));
 const AdminLayout = lazy(() => import('../admin/components/layout/AdminLayout'));
 
@@ -193,6 +194,7 @@ export default function AppRoutes() {
           <Route path="/admin/zoom/questions" element={<RouteElement name="admin-zoom-questions"><AdminRoute><AdminLayout><AdminZoomQuestionsPage /></AdminLayout></AdminRoute></RouteElement>} />
           <Route path="/admin/projects" element={<RouteElement name="admin-projects"><AdminRoute><AdminLayout><AdminProjectsPage /></AdminLayout></AdminRoute></RouteElement>} />
           <Route path="/admin/context-sources" element={<RouteElement name="admin-context-sources"><AdminRoute><AdminLayout><AdminContextSources /></AdminLayout></AdminRoute></RouteElement>} />
+          <Route path="/admin/train" element={<RouteElement name="admin-train"><AdminRoute><AdminLayout><AdminTrain /></AdminLayout></AdminRoute></RouteElement>} />
           <Route path="/admin/auto-answer" element={<RouteElement name="admin-auto-answer"><AdminRoute><AdminLayout><FeatureGate featureKey="aiAutoAnswer" featureLabel="AI Auto-Answer"><AdminAutoAnswerQueue /></FeatureGate></AdminLayout></AdminRoute></RouteElement>} />
           <Route path="/admin/faq-audit" element={<RouteElement name="admin-faq-audit"><AdminRoute><AdminLayout><FeatureGate featureKey="faqFreshness" featureLabel="FAQ Freshness Audit"><AdminFAQAudit /></FeatureGate></AdminLayout></AdminRoute></RouteElement>} />
           <Route path="/admin/batches" element={<RouteElement name="admin-batches"><AdminRoute><AdminLayout><AdminBatches /></AdminLayout></AdminRoute></RouteElement>} />
