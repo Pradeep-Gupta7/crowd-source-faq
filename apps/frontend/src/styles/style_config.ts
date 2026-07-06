@@ -267,3 +267,11 @@ export const searchInputCompact = 'w-full bg-mist border border-border/60 text-i
 /* ── 19. Search bar suggestion list item ────────────────────────── */
 
 export const searchSuggestionItem = 'w-full text-left px-5 py-3.5 text-sm text-ink hover:bg-cream/60 transition-colors duration-150 border-b border-border/30 last:border-0 flex items-center gap-3';
+
+/* ── 20. Explore-page compact search bar ──────────────────────────
+ * The Explore-page sticky search pill (different visual identity
+ * from the home-page hero search). */
+
+export const exploreSearchBar   = 'w-full pl-12 pr-24 py-3.5 rounded-full border border-border/70 bg-card text-sm text-ink placeholder-ink-faint focus:outline-none focus:border-accent/50 focus:bg-card transition-all duration-200 shadow-subtle';
+export const exploreSearchIcon  = 'absolute left-4 top-1/2 -translate-y-1/2 text-ink-faint pointer-events-none';
+export const exploreSearchClear = 'absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-ink-faint hover:text-ink px-2 py-1 rounded-full hover:bg-mist transition-colors';
