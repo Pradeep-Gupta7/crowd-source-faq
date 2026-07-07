@@ -398,14 +398,12 @@ Severity scale:
 - **Fix:** Extend `createPostSchema` in `apps/backend/src/utils/auth/validation.ts` to include `tags: z.array(z.string().min(1).max(32).regex(/^[a-z0-9-_]+$/)).max(3).optional()`. Verify malformed tags return 400 not 500.
 - **Verification:** `curl -X POST /csfaq/api/community -d '{"title":"x","body":"y","tags":["$(printf 'a%.0s' {1..1000})"]}'` — expect 400.
 
-### H2-2 — Frontend H11 (CommentNode upvote `.then` uses already-mutated state) is FIXED but the rollback uses `previousUpvote` (typo — undefined variable) on the error path
-- **File(s):** `apps/frontend/src/components/community/CommentNode.tsx:120-145`
-- **Severity:** HIGH
-- **Category:** Logic / UX
-- **Bug:** The H11 optimistic-update rollback was patched — `previousUpvotes` is now captured before mutation. But the rollback in `.catch()` references `previousUpvote` (line 145, missing trailing 's'). When the upvote API call fails, the catch block throws a `ReferenceError: previousUpvote is not defined`, swallowing the rollback and leaving the upvote "stuck on" forever in the UI. The reply-loading guard works because that's a different ref. This is a regression introduced by the H11 fix itself.
-- **Evidence:** `apps/frontend/src/components/community/CommentNode.tsx:142-145` — the catch handler does `setLocalUpvotes(previousUpvote...)` but the captured variable is `previousUpvotes`.
-- **Fix:** Change `previousUpvote` to `previousUpvotes` in the catch block. Better: move the rollback into a `try { ... } catch (e) { rollback }` helper that doesn't depend on outer closure naming.
-- **Verification:** Mock the upvote API to fail; click upvote; expect state to revert AND no ReferenceError in console.
+### H2-2 — ~~CommentNode upvote rollback typo~~ — RETRACTED (false positive on re-verification)
+- **File(s):** `apps/frontend/src/components/community/CommentNode.tsx:131`
+- **Severity:** N/A — retracted
+- **Category:** N/A
+- **Bug:** Originally reported as the `.catch()` block referencing `previousUpvote` (singular) when the captured variable is `previousUpvotes`. **Re-verification by Subagent 2 re-dispatch (2026-07-07 11:19, deleg_0f90155c) confirms the current code uses `previousUpvotes` correctly** — no typo. The rollback is `setLocalUpvotes(previousUpvotes); setLocalDownvotes(previousDownvotes);` (line 131-132). This finding was based on a description of the H11-fix patch narrative that didn't match the current state.
+- **Status:** Retracted. The H11 optimistic-update rollback fix is verified intact.
 
 ### H2-3 — Frontend H12 (ThreadDetail bookmark rollback stale closure) is FIXED on this surface but `ThreadBookmarkButton` is stateless — parent owns the rollback
 - **File(s):** `apps/frontend/src/components/community/ThreadDetail.tsx:279-283`, `apps/frontend/src/components/community/ThreadBookmarkButton.tsx`
@@ -492,10 +490,10 @@ Severity scale:
 
 ### Subagent 2 Summary
 - CRITICAL: 0
-- HIGH: 3 (H2-1 createPost tags schema, H2-2 CommentNode rollback typo, H2-3 ThreadBookmarkButton stateless regression risk) + **S2-1 anon AI limit server-bypass** (judge-merged from async delivery)
-- MEDIUM: 5 (M2-1..M2-5) + **S2-2 createPost trim, S2-3 ai_moderator role drift, S2-4 bookmarks redirect, S2-6 resolve RBAC gap** (judge-merged from async delivery)
-- LOW: 3 (L2-1..L2-3) + **S2-5 FeatureGate race, S2-7 notification double-fetch, S2-8 ProfileCard reload, S2-9 community search pagination, S2-10 safeHref XSS** (judge-merged from async delivery)
-- **TOTAL: 21 findings (11 inline-applied + 10 from official async delivery, of which 2 sharpen inline entries and 8 are net-new)**
+- HIGH: 2 (H2-1 createPost tags schema, S2-1 anon AI limit server-bypass) + **H2-2 retracted 2026-07-07 11:19 (false positive — `previousUpvotes` is correctly used in current code)**
+- MEDIUM: 5 (M2-1..M2-5) + S2-2, S2-3, S2-4, **S2-6 escalated HIGH** + 2-A SupportIndexPage q-deps, 2-B useNotifications tab-hidden polling, 2-C markAllTeaRead race, 2-D CommunityPage dual-effect race, 2-E AccountPage DOM-read
+- LOW: 3 (L2-1..L2-3) + S2-5, S2-7, S2-8, S2-9, S2-10 + 2-F SavedKnowledge id fallback, 2-G ProfileCard response type, 2-H SpillTheTea lastSeenIdRef
+- **TOTAL: 28 findings (11 inline-applied + 10 from async delivery + 8 from re-dispatch third pass, of which 1 retracted as false positive)**
 
 ### Subagent 2 — Additional findings (from async delivery, judge-spliced)
 
@@ -582,11 +580,77 @@ Severity scale:
 - **Fix:** Add a small `safeHref = (href: string) => /^[/](?!.*:\/\/).*/.test(href) ? href : '#'` guard before `navigate()`.
 - **Verification:** Inject `s.href: 'javascript:alert(1)'` into a mocked response — the click should not execute the script.
 
+### Subagent 2 — Third-pass findings (from re-dispatch deleg_0f90155c, 2026-07-07 11:19)
+
+### 2-A — `SupportIndexPage` `q` query param captured but NEVER in useEffect deps — search filter silently broken
+- **File(s):** `apps/frontend/src/pages/SupportIndexPage.tsx:24-45`
+- **Severity:** MEDIUM
+- **Category:** Logic
+- **Bug:** The page reads `q` from `useSearchParams()` but the dependency array on the search/filter `useEffect` doesn't include it. The effect fires once on mount; subsequent `?q=foo` URL changes don't trigger re-filter. The user types/searches in the URL bar → no result.
+- **Fix:** Add `q` to the effect deps OR move the search into a derived `useMemo` keyed on `q + tickets`.
+- **Verification:** Visit `/support?q=test` then `/support?q=different` — expect the list to refilter.
+
+### 2-B — `useNotifications` 30s polling runs even when tab is hidden — wastes API budget
+- **File(s):** `apps/frontend/src/hooks/useNotifications.tsx:60-72`
+- **Severity:** MEDIUM
+- **Category:** Performance
+- **Bug:** `setInterval(fetchUnreadCount, 30_000)` runs regardless of `document.visibilityState`. With 1000s of active tabs hidden in the background, this is thousands of wasted API calls per minute globally.
+- **Fix:** Wrap with `if (document.hidden) return;` inside the interval callback, OR use the Page Visibility API to pause the interval when hidden and resume on focus.
+- **Verification:** Open the page, switch tabs, wait 5 minutes — return and check Network tab: only one `/unread-count` call per focus, not 10.
+
+### 2-C — `NotificationBell` `handleMarkAllTeaRead` has no idempotency guard — close-then-open window double-fires
+- **File(s):** `apps/frontend/src/components/notifications/NotificationBell.tsx:87-95`
+- **Severity:** MEDIUM
+- **Category:** Race
+- **Bug:** User opens dropdown → clicks "mark all as read" → closes the dropdown within the in-flight PATCH window → reopens. The local state can show 0 (cached from a different dropdown) but the optimistic count was based on the pre-click snapshot. Net effect: count drops to 0 twice, OR stays at 0 once (depending on which one resolves last) — confusing for the user, plus the second click hits the server with the same idempotency key (or no key at all).
+- **Fix:** Use a ref `markAllInFlightRef` to short-circuit the second click; show a spinner until the PATCH resolves.
+- **Verification:** With network throttled to 500ms, click mark-all-read, immediately close + reopen the dropdown — expect a single PATCH.
+
+### 2-D — `CommunityPage` two effects on `[filter, sort, showAllPrograms]` fire in same render — race window shows stale page-1
+- **File(s):** `apps/frontend/src/pages/CommunityPage.tsx:130-139`
+- **Severity:** MEDIUM
+- **Category:** Race
+- **Bug:** Two `useEffect`s share the same dependency array. One resets `setNextCursor(null); setPosts([])`, the other calls `fetchPosts`. If they fire in the wrong order (React 18 strict mode can fire twice), the first `fetchPosts` may write to `posts` AFTER the second effect's `setPosts([])` clears it — leaving the stale page-1 visible for a frame.
+- **Fix:** Combine the two effects into one; reset state then call fetchPosts in the same effect body.
+- **Verification:** Change filter → no stale posts flash; only the new filter's first page shows.
+
+### 2-E — `AccountPage` reads DOM (`getElementById`) for transcript topic instead of React state — value lost on modal close-then-reopen
+- **File(s):** `apps/frontend/src/pages/AccountPage.tsx:152, 160, 641`
+- **Severity:** MEDIUM
+- **Category:** Logic / UX
+- **Bug:** The transcript-topic value is read via `document.getElementById('transcript-topic').value` rather than via React state. If the user types, closes the modal, then reopens, the input is unmounted + remounted → React resets the DOM input → the value is lost.
+- **Fix:** Hoist `transcriptTopic` into a `useState`; bind via `value={transcriptTopic} onChange={setTranscriptTopic}`.
+- **Verification:** Type a topic, close the upload modal, reopen — topic still there.
+
+### 2-F — `SavedKnowledgePage` leftover `user?.id` fallback (should be `user?._id`)
+- **File(s):** `apps/frontend/src/pages/SavedKnowledgePage.tsx:141`
+- **Severity:** LOW
+- **Category:** Code smell
+- **Bug:** `currentUserId={user?._id || (user?.id as string | undefined)}` — the `user?.id` fallback is leftover from before the type was fixed. The User type has `_id`, never `id`. Harmless today but invites future confusion.
+- **Fix:** Drop the fallback: `currentUserId={user?._id}`.
+- **Verification:** TS compiles; render shows correct user id.
+
+### 2-G — `ProfileCard` API response type annotated `{ user: { id: string } }` ×3 sites (should be `_id`)
+- **File(s):** `apps/frontend/src/components/account/ProfileCard.tsx:48, 70, 94`
+- **Severity:** LOW
+- **Category:** Code smell
+- **Bug:** Three separate `api.put/post/delete<{ user: { id: string } }>` annotations all use `id`. Should be `_id`. TS-only inconsistency today; if the backend ever serializes differently, the component silently renders `undefined` for the avatar/name.
+- **Fix:** Standardize on `{ user: User }` (the existing User type with `_id`).
+- **Verification:** `grep -n "id: string" apps/frontend/src/components/account/ProfileCard.tsx` → zero hits.
+
+### 2-H — `SpillTheTea` `fetchTea(1, true)` reset branch — `lastSeenIdRef` reset only in `setOpen` branch, not the initial-load branch
+- **File(s):** `apps/frontend/src/components/community/SpillTheTea.tsx:74-83, 98-114`
+- **Severity:** LOW
+- **Category:** Race / UX
+- **Bug:** Initial `useEffect` (line 98-104) calls `fetchTea(1, true)` to load the initial state but does NOT reset `lastSeenIdRef`. Only the `setOpen(true)` branch (line 106-114) calls `setLastSeenIdRef`. On a very fast mount → tab-focus → background-poll sequence, a tea drop could be surfaced twice (initial fetch sets it as new; focus branch also re-surfaces it).
+- **Fix:** Also reset `lastSeenIdRef.current = drop._id` at the end of the initial-load effect.
+- **Verification:** Mock SSE/notification timing — load page, get a notification, focus the tab — see exactly one toast.
+
 ### Subagent 2 — Out of scope (from async delivery)
 - `community/SpillTheTea.tsx`, `CommunityHealth.tsx`, `ThreadActivityTimeline.tsx`, `CommunityPostCard.tsx` — recommend a focused review pass.
 - `support/ContextFieldsDisplay.tsx`, `DynamicFieldInput.tsx`, `GoldenHistorySection.tsx`, `types.ts`, `icons.tsx`, **`api.ts`** — frontend support module has its own `api.ts` that may bypass `apps/frontend/src/utils/api.ts` interceptor contract. **Verify the support-module axios instance also wires up `auth:logout` + 401 refresh** — this is the next-biggest frontend risk for this subagent's scope.
 
-**Prior-audit status:** H6 (CreatePostDialog no server-auth) is now FIXED end-to-end on the server. H7 (useAuth logic inversion) and H8 (logout cleanup) — pending re-check but assumed fixed per the prior run. H11 (CommentNode upvote rollback) — there's a NEW bug in the fix itself (`previousUpvote` typo — see H2-2). H12 (ThreadDetail bookmark rollback) — FIXED on ThreadDetail but stateless button delegates risk to other consumers (see H2-3).
+**Prior-audit status:** H6 (CreatePostDialog no server-auth) is now FIXED end-to-end on the server. H7 (useAuth logic inversion) and H8 (logout cleanup) — pending re-check but assumed fixed per the prior run. H11 (CommentNode upvote rollback) — **verified intact on 2026-07-07 11:19** (the H2-2 retraction entry above explains why). H12 (ThreadDetail bookmark rollback) — FIXED on ThreadDetail but stateless button delegates risk to other consumers (see H2-3).
 
 <!-- ============================================ -->
 <!-- SUBAGENT 3: frontend-admin -->
@@ -1781,14 +1845,14 @@ Findings 5.9 (M4-3 cross-cutting), 5.6 (same anti-pattern as Subagent 4 M4-1/4-2
 
 ## Consolidated Summary (filled by judge)
 
-### Counts (updated 2026-07-07 11:30 after async Subagent 2 delivery landed)
+### Counts (updated 2026-07-07 11:32 after Subagent 2 re-dispatch landed)
 | Severity | Subagent 1 | Subagent 2 | Subagent 3 | Subagent 4 | Subagent 5 | TOTAL |
 |---|---|---|---|---|---|---|
 | CRITICAL | 0 | 0 | 1 (S3-01 AdminLogin routing broken) | 0 | 1 (5.1 suspendUserSchema broken) | **2** |
-| HIGH     | 1 | 4 (H2-1, H2-2, H2-3, S2-1) | 1 (S3-02) | 2 (H4-1, H4-2) | 4 (5.2, 5.3, 5.10, 5.14) | **12** |
-| MEDIUM   | 4 | 9 (M2-1..M2-5 + S2-2, S2-3, S2-4, **S2-6 escalated HIGH**) | 5 | 5 | 9 | **32** |
-| LOW      | 6 | 8 (L2-1..L2-3 + S2-5, S2-7, S2-8, S2-9, S2-10) | 5 | 6 | 10 | **35** |
-| **TOTAL** | **11** | **21** | **12** | **13** | **24** | **81** |
+| HIGH     | 1 | 4 (H2-1, H2-3, S2-1, S2-6) — H2-2 retracted as false positive | 1 (S3-02) | 2 (H4-1, H4-2) | 4 (5.2, 5.3, 5.10, 5.14) | **12** |
+| MEDIUM   | 4 | 13 (M2-1..M2-5 + S2-2, S2-3, S2-4, 2-A, 2-B, 2-C, 2-D, 2-E) | 5 | 5 | 9 | **36** |
+| LOW      | 6 | 11 (L2-1..L2-3 + S2-5, S2-7, S2-8, S2-9, S2-10 + 2-F, 2-G, 2-H) | 5 | 6 | 10 | **38** |
+| **TOTAL** | **11** | **28** | **12** | **13** | **24** | **88** |
 
 ### Top 10 priorities (judge-curated)
 
