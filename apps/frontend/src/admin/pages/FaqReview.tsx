@@ -203,7 +203,7 @@ export default function FaqReview() {
         <button
           onClick={handleAIReviewBatch}
           disabled={aiBatchLoading}
-          className="text-xs px-4 py-2 rounded-lg bg-accent/10 text-accent border border-purple-500/20 hover:bg-purple-500/20 disabled:opacity-50 transition-colors"
+          className="text-xs px-4 py-2 rounded-lg bg-accent/10 text-accent border border-accent/30 hover:bg-accent/20 disabled:opacity-50 transition-colors"
         >
           {aiBatchLoading ? 'Running AI...' : 'Run AI Batch Review'}
         </button>
@@ -269,7 +269,7 @@ export default function FaqReview() {
                           {ai && (
                             <div className="flex items-center gap-1">
                               <div className="w-12 h-1.5 bg-border rounded-full overflow-hidden">
-                                <div className="h-full bg-purple-400 rounded-full" style={{ width: `${ai.confidenceScore}%` }} />
+                                <div className="h-full bg-accent rounded-full" style={{ width: `${ai.confidenceScore}%` }} />
                               </div>
                               <span className="text-xs text-ink-faint">{ai.confidenceScore}%</span>
                             </div>
@@ -401,7 +401,7 @@ export default function FaqReview() {
                     <div className="text-xs font-semibold text-ink-faint uppercase tracking-wide">AI Generated FAQ</div>
                     <div className="flex items-center gap-1">
                       <div className="w-16 h-1.5 bg-border rounded-full overflow-hidden">
-                        <div className="h-full bg-purple-400 rounded-full" style={{ width: `${viewItem.aiGeneratedFaq.confidenceScore}%` }} />
+                        <div className="h-full bg-accent rounded-full" style={{ width: `${viewItem.aiGeneratedFaq.confidenceScore}%` }} />
                       </div>
                       <span className="text-xs text-ink-faint">{viewItem.aiGeneratedFaq.confidenceScore}% conf.</span>
                     </div>
@@ -422,7 +422,7 @@ export default function FaqReview() {
                       </div>
                     </div>
                   ) : (
-                    <div className="bg-purple-500/10 rounded-xl p-3 border border-purple-500/20 space-y-2">
+                    <div className="bg-accent/10 rounded-xl p-3 border border-accent/30 space-y-2">
                       <div className="font-medium text-sm text-ink">{viewItem.aiGeneratedFaq.question}</div>
                       <div className="text-sm text-ink">{viewItem.aiGeneratedFaq.answer}</div>
                       <div className="text-xs text-ink-faint">{viewItem.aiGeneratedFaq.category} · {(viewItem.aiGeneratedFaq.tags ?? []).join(', ')}</div>

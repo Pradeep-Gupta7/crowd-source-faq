@@ -357,7 +357,7 @@ export default function AccountPage() {
 
             {/* Error message */}
             {zoomError && (
-              <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-2.5">
+              <div className="text-sm text-danger bg-danger-light border border-danger/30 rounded-xl px-4 py-2.5">
                 {zoomError}
               </div>
             )}
@@ -367,7 +367,7 @@ export default function AccountPage() {
               <button
                 onClick={handleDisconnectZoom}
                 disabled={disconnecting}
-                className="w-full px-4 py-2.5 rounded-xl border border-red-200 text-red-600 text-sm font-medium hover:bg-red-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full px-4 py-2.5 rounded-xl border border-danger/30 text-danger text-sm font-medium hover:bg-danger-light transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {disconnecting ? 'Disconnecting...' : 'Disconnect Zoom'}
               </button>
@@ -541,7 +541,7 @@ export default function AccountPage() {
                   <div className={`text-xs px-3 py-2 rounded-lg ${
                     transcriptMsg.type === 'ok'
                       ? 'bg-accent/10 text-accent border border-accent/30'
-                      : 'bg-red-50 text-red-600 border border-red-200'
+                      : 'bg-danger-light text-danger border border-danger/30'
                   }`}>
                     {transcriptMsg.text}
                   </div>
@@ -613,7 +613,7 @@ export default function AccountPage() {
             <div className={`px-3 py-2 rounded-xl text-xs ${
               docMsg.type === 'ok'
                 ? 'bg-accent/10 border border-accent/30 text-accent'
-                : 'bg-red-50 border border-red-200 text-red-700'
+                : 'bg-danger-light border border-danger/30 text-danger'
             }`}>
               {docMsg.text}
               {docMsg.type === 'ok' && docRecentStatus === 'completed' && docRecentId && (
@@ -650,7 +650,7 @@ export default function AccountPage() {
                 <span className="text-xs text-ink font-medium truncate">{transcriptSelectedFile.file.name}</span>
               </div>
               <div className="text-[10px] text-ink-faint">
-                Topic: {(document.getElementById('transcript-topic') as HTMLInputElement)?.value || '—'}
+                Topic: {transcriptTopic.trim() || '—'}
               </div>
             </div>
             <div className="flex items-center gap-2">

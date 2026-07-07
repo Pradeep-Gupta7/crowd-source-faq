@@ -19,6 +19,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useBatch } from '../../../context/BatchContext';
 import type { Batch } from '../../../context/BatchContext';
+import { accentDot, warningDot } from '../../../styles/style_config';
 
 export default function AdminActiveProgramIndicator(): React.ReactElement | null {
   const { currentBatch, availableBatches, setCurrentBatch } = useBatch();
@@ -31,7 +32,7 @@ export default function AdminActiveProgramIndicator(): React.ReactElement | null
         to="/admin/programs"
         className="inline-flex items-center gap-2 text-[11px] font-medium text-ink-faint hover:text-ink"
       >
-        <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
+        <span className={warningDot} />
         No program selected — set a default →
       </Link>
     );

@@ -115,7 +115,7 @@ function StatusDot({ p }: { p: ScheduledProcess }): React.ReactElement {
     return <span className="inline-block w-2 h-2 rounded-full bg-accent animate-pulse" title="running now" />;
   }
   if (p.lastError && p.errorCount > 0) {
-    return <span className="inline-block w-2 h-2 rounded-full bg-red-400" title="last run errored" />;
+    return <span className="inline-block w-2 h-2 rounded-full bg-danger" title="last run errored" />;
   }
   if (!p.isActive) {
     return <span className="inline-block w-2 h-2 rounded-full bg-gray-400" title="paused or disabled" />;
@@ -279,7 +279,7 @@ export default function AdminSchedule(): React.ReactElement {
         <SummaryStat label="Total" value={data?.summary.total ?? 0} accent="text-ink" />
         <SummaryStat label="Cron jobs" value={data?.summary.cron ?? 0} accent="text-accent" />
         <SummaryStat label="Active" value={data?.summary.active ?? 0} accent="text-accent" />
-        <SummaryStat label="Erroring" value={data?.summary.erroring ?? 0} accent="text-red-400" />
+        <SummaryStat label="Erroring" value={data?.summary.erroring ?? 0} accent="text-danger" />
         <SummaryStat label="Overridden" value={data?.summary.overridden ?? 0} accent="text-warning" />
       </div>
 
@@ -426,7 +426,7 @@ export default function AdminSchedule(): React.ReactElement {
                   <td className="px-4 py-3 text-xs">
                     {p.errorCount > 0 ? (
                       <div className="flex flex-col">
-                        <span className="text-red-400 font-semibold">{p.errorCount} err{p.errorCount === 1 ? '' : 's'}</span>
+                        <span className="text-danger font-semibold">{p.errorCount} err{p.errorCount === 1 ? '' : 's'}</span>
                         {p.lastError && (
                           <span className="text-[10px] text-ink-faint max-w-xs truncate" title={p.lastError}>
                             {p.lastError}
@@ -552,7 +552,7 @@ function HistoryDrawer({ jobId, onClose }: { jobId: string; onClose: () => void 
   const statusColor = (s: RunRecord['status']): string => {
     switch (s) {
       case 'success': return 'text-accent';
-      case 'error': return 'text-red-400';
+      case 'error': return 'text-danger';
       case 'skipped': return 'text-ink-faint';
     }
   };
@@ -621,7 +621,7 @@ function HistoryDrawer({ jobId, onClose }: { jobId: string; onClose: () => void 
                     </span>
                   </div>
                   {r.error && (
-                    <div className="mt-2 text-[11px] text-red-400 bg-red-50 border border-red-200 rounded p-2 font-mono break-all">
+                    <div className="mt-2 text-[11px] text-danger bg-danger-light border border-danger/30 rounded p-2 font-mono break-all">
                       {r.error}
                     </div>
                   )}
