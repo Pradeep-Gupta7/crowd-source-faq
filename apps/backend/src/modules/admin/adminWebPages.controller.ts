@@ -47,7 +47,12 @@ export const addWebPage = async (req: Request, res: Response): Promise<void> => 
   try {
     const { title, text, statusCode } = await fetchAndExtract(url);
     if (!text || text.length < 20) {
-      res.status(422).json({ message: 'page has no extractable text content' });
+      res.status(422).json({
+        message: 'No extractable text — the page is likely a JS-only SPA, a login wall, or returned mostly markup (no <p>/<article>/<h*> tags).',
+        url,
+        extractedChars: text?.length ?? 0,
+        statusCode,
+      });
       return;
     }
     const reviewerId = (() => {

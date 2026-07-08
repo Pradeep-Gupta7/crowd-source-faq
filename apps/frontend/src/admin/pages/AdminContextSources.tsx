@@ -462,11 +462,24 @@ export default function AdminContextSources() {
       setWebAddSuccess(`Added ${addedUrl}.`);
       await fetchWebPages();
     } catch (e) {
-      const status = (e as { response?: { status?: number } })?.response?.status;
+      const status = (e as { response?: { status?: number; data?: { message?: string; url?: string; extractedChars?: number } } })?.response?.status;
+      const detail = (e as { response?: { data?: { message?: string; url?: string; extractedChars?: number } } })?.response?.data;
       let msg = friendlyError(e, 'Could not add that page.');
-      if (status === 400) msg = 'Invalid URL. Use a full http(s) URL.';
-      else if (status === 422) msg = 'That page has no extractable text.';
-      else if (status === 502) msg = 'Could not fetch the page (server error).';
+      if (status === 400) {
+        msg = 'Invalid URL. Use a full http(s) URL (and skip browser hash fragments like #section).';
+      } else if (status === 422) {
+        // Backend now returns a richer message that explains why
+        // (JS-only SPA, login wall, etc.). Prefer the server's own
+        // message when present, fall back to a generic one.
+        const server = detail?.message;
+        const url = detail?.url;
+        const chars = detail?.extractedChars;
+        msg = server
+          ? `${server}${url ? ` (${url})` : ''}${chars != null ? ` — only ${chars} chars extracted.` : ''}`
+          : 'That page has no extractable text — likely JS-only or a login wall.';
+      } else if (status === 502) {
+        msg = 'Could not fetch the page from the upstream URL.';
+      }
       setWebAddError(msg);
     } finally {
       setWebAddPending(false);
