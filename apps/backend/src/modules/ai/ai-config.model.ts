@@ -25,6 +25,12 @@
  * detection in duplicateDetector.ts and knowledgeBase.ts with a
  * unified, admin-configurable AI layer. The runtime resolver
  * (utils/aiProvider.ts) checks the DB first, then env.
+ *
+ * v1.82 — added `customModelField?: string` on IProviderOverride
+ * to expose the wire-format model field name for the `custom`
+ * provider (e.g. `model` vs `modelName`). Surfaced via publicView()
+ * and surfaced to the admin UI as a select on the Custom provider
+ * card. See aiProvider.ts for the runtime fallback chain.
  */
 
 import mongoose, { Schema, type Document, Types } from 'mongoose';
@@ -40,6 +46,17 @@ export interface IProviderOverride {
   baseURL: string;
   // Per-provider model override. Empty string = "use provider default".
   model: string;
+  /**
+   * v1.82 — custom-provider wire-format model field name.
+   *   ''         → fall back to env / default ('model')
+   *   'model'    → standard OpenAI-compat (`{model: "..."}`)
+   *   'modelName' → camelCase variant for proxies that expect it
+   * Only meaningful when the active provider is `custom`; ignored
+   * for the other five. Typed as `string` (not enum) so Mongoose's
+   * nested-schema type inference stays happy; the controller
+   * validates the allowed values at write time.
+   */
+  customModelField?: string;
 }
 
 export interface IEmbeddingConfig {
@@ -102,6 +119,10 @@ const providerOverrideSchema = new Schema<IProviderOverride>(
     apiKeyCipher: { type: String, default: '' },
     baseURL:      { type: String, default: '' },
     model:        { type: String, default: '' },
+    // v1.82 — plain String (not enum) so legacy docs round-trip
+    // cleanly. Controller validates '' | 'model' | 'modelName'
+    // before persisting.
+    customModelField: { type: String, default: '' },
   },
   { _id: false }
 );
@@ -122,6 +143,10 @@ const aiConfigSchema = new Schema<IAiConfig>(
     },
 
     providers: {
+      // v1.82 — type cast to any to work around a Mongoose v7
+      // type-inference bug that fires when the IProviderOverride
+      // interface gains an optional field. Runtime behaviour is
+      // identical.
       type: {
         anthropic: { type: providerOverrideSchema, default: () => ({}) },
         openai:    { type: providerOverrideSchema, default: () => ({}) },
@@ -129,15 +154,15 @@ const aiConfigSchema = new Schema<IAiConfig>(
         minimax:   { type: providerOverrideSchema, default: () => ({}) },
         gemini:    { type: providerOverrideSchema, default: () => ({}) },
         custom:    { type: providerOverrideSchema, default: () => ({}) },
-      },
+      } as any,
       required: true,
       default: () => ({
-        anthropic: { apiKeyCipher: '', baseURL: '', model: '' },
-        openai:    { apiKeyCipher: '', baseURL: '', model: '' },
-        xai:       { apiKeyCipher: '', baseURL: '', model: '' },
-        minimax:   { apiKeyCipher: '', baseURL: '', model: '' },
-        gemini:    { apiKeyCipher: '', baseURL: '', model: '' },
-        custom:    { apiKeyCipher: '', baseURL: '', model: '' },
+        anthropic: { apiKeyCipher: '', baseURL: '', model: '', customModelField: '' },
+        openai:    { apiKeyCipher: '', baseURL: '', model: '', customModelField: '' },
+        xai:       { apiKeyCipher: '', baseURL: '', model: '', customModelField: '' },
+        minimax:   { apiKeyCipher: '', baseURL: '', model: '', customModelField: '' },
+        gemini:    { apiKeyCipher: '', baseURL: '', model: '', customModelField: '' },
+        custom:    { apiKeyCipher: '', baseURL: '', model: '', customModelField: '' },
       }),
     },
 
@@ -224,7 +249,7 @@ aiConfigSchema.methods.setApiKey = function (provider: AIProviderType, plainKey:
   const self = this as unknown as IAiConfig;
   if (!self.providers) self.providers = {} as any;
   if (!self.providers[provider]) {
-    self.providers[provider] = { apiKeyCipher: '', baseURL: '', model: '' } as IProviderOverride;
+    self.providers[provider] = { apiKeyCipher: '', baseURL: '', model: '', customModelField: '' } as IProviderOverride;
   }
   self.providers[provider].apiKeyCipher = plainKey ? encrypt(plainKey) : '';
 };
@@ -251,13 +276,17 @@ aiConfigSchema.methods.setEmbeddingApiKey = function (plainKey: string) {
 aiConfigSchema.methods.publicView = function () {
   const self = this as unknown as IAiConfig;
   const obj = self.toObject();
-  const view: Record<string, { hasKey: boolean; baseURL: string; model: string }> = {};
+  const view: Record<string, { hasKey: boolean; baseURL: string; model: string; customModelField: string }> = {};
   for (const p of ['anthropic', 'openai', 'xai', 'minimax', 'gemini', 'custom'] as AIProviderType[]) {
-    const prov = obj.providers?.[p] ?? { apiKeyCipher: '', baseURL: '', model: '' };
+    const prov = obj.providers?.[p] ?? { apiKeyCipher: '', baseURL: '', model: '', customModelField: '' };
     view[p] = {
       hasKey: !!prov.apiKeyCipher,
       baseURL: prov.baseURL ?? '',
       model: prov.model ?? '',
+      // v1.82 — only meaningful for `custom`. Ship empty string
+      // for other providers so the frontend can read a single
+      // field without per-provider branching.
+      customModelField: prov.customModelField ?? '',
     };
   }
   return {

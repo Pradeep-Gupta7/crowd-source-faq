@@ -60,12 +60,12 @@ export const getAiConfig = async (req: Request, res: Response): Promise<void> =>
       config = await AiConfig.create({
         activeProvider: 'anthropic',
         providers: {
-          anthropic: { apiKeyCipher: '', baseURL: '', model: '' },
-          openai:    { apiKeyCipher: '', baseURL: '', model: '' },
-          xai:       { apiKeyCipher: '', baseURL: '', model: '' },
-          minimax:   { apiKeyCipher: '', baseURL: '', model: '' },
-          gemini:    { apiKeyCipher: '', baseURL: '', model: '' },
-          custom:    { apiKeyCipher: '', baseURL: '', model: '' },
+          anthropic: { apiKeyCipher: '', baseURL: '', model: '', customModelField: '' },
+          openai:    { apiKeyCipher: '', baseURL: '', model: '', customModelField: '' },
+          xai:       { apiKeyCipher: '', baseURL: '', model: '', customModelField: '' },
+          minimax:   { apiKeyCipher: '', baseURL: '', model: '', customModelField: '' },
+          gemini:    { apiKeyCipher: '', baseURL: '', model: '', customModelField: '' },
+          custom:    { apiKeyCipher: '', baseURL: '', model: '', customModelField: '' },
         },
         features: {
           duplicateDetection:  { enabled: true, model: 'claude-sonnet-4-20250514', temperature: 0.1, maxTokens: 1024 },
@@ -120,6 +120,14 @@ interface ProviderOverrideUpdate {
   apiKey?: string;
   baseURL?: string;
   model?: string;
+  /**
+   * v1.82 — custom-provider wire-format model field name override.
+   * Empty string means "no DB override — fall back to env, then
+   * to `'model'`". Only meaningful for provider `custom`; ignored
+   * for the other five. Controller validates the allowed values at
+   * write time (only '' | 'model' | 'modelName').
+   */
+  customModelField?: '' | 'model' | 'modelName';
 }
 
 export const updateAiConfig = async (req: Request, res: Response): Promise<void> => {
@@ -158,12 +166,12 @@ export const updateAiConfig = async (req: Request, res: Response): Promise<void>
       config = await AiConfig.create({
         activeProvider: 'anthropic',
         providers: {
-          anthropic: { apiKeyCipher: '', baseURL: '', model: '' },
-          openai:    { apiKeyCipher: '', baseURL: '', model: '' },
-          xai:       { apiKeyCipher: '', baseURL: '', model: '' },
-          minimax:   { apiKeyCipher: '', baseURL: '', model: '' },
-          gemini:    { apiKeyCipher: '', baseURL: '', model: '' },
-          custom:    { apiKeyCipher: '', baseURL: '', model: '' },
+          anthropic: { apiKeyCipher: '', baseURL: '', model: '', customModelField: '' },
+          openai:    { apiKeyCipher: '', baseURL: '', model: '', customModelField: '' },
+          xai:       { apiKeyCipher: '', baseURL: '', model: '', customModelField: '' },
+          minimax:   { apiKeyCipher: '', baseURL: '', model: '', customModelField: '' },
+          gemini:    { apiKeyCipher: '', baseURL: '', model: '', customModelField: '' },
+          custom:    { apiKeyCipher: '', baseURL: '', model: '', customModelField: '' },
         },
         features: {
           duplicateDetection:  { enabled: true, model: 'claude-sonnet-4-20250514', temperature: 0.1, maxTokens: 1024 },
@@ -234,6 +242,21 @@ export const updateAiConfig = async (req: Request, res: Response): Promise<void>
         }
         if (update.baseURL !== undefined) setOps[`providers.${prov}.baseURL`] = update.baseURL;
         if (update.model !== undefined)    setOps[`providers.${prov}.model`]    = update.model;
+        // v1.82 — custom-model-field override. Validated against the
+        // same enum ('model' | 'modelName' | '') so a typo in the
+        // admin UI gets a clean 400 instead of being persisted as
+        // junk. Empty string is allowed and means "fall back to env
+        // / default" — admins can clear an override without dropping
+        // the row.
+        if (update.customModelField !== undefined) {
+          if (update.customModelField !== '' && update.customModelField !== 'model' && update.customModelField !== 'modelName') {
+            res.status(400).json({
+              message: `Invalid customModelField for provider ${prov}: must be '', 'model', or 'modelName'.`,
+            });
+            return;
+          }
+          setOps[`providers.${prov}.customModelField`] = update.customModelField;
+        }
       }
     }
     for (const [k, v] of Object.entries(features ?? {})) {

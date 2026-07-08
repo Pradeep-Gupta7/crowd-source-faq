@@ -14,6 +14,13 @@
  *
  * The DB value is read fresh on every call (no module-level caching) so that
  * an admin change in the dashboard takes effect immediately for new requests.
+ *
+ * v1.82 — `custom` provider's wire-format model field name is exposed as
+ * `customModelField` on the resolved ProviderConfig. Resolution chain
+ * (first non-empty wins):
+ *   1. AiConfig.providers.custom.customModelField (admin dashboard)
+ *   2. process.env.CUSTOM_MODEL_FIELD          (legacy escape hatch)
+ *   3. 'model'                                  (hard default)
  */
 
 import AiConfig from '../../modules/ai/ai-config.model.js';
@@ -287,13 +294,34 @@ export async function getPipelineProviderConfig(
     throw new Error(`No AI model configured for provider '${provider}' on pipeline '${pipeline}'. Please configure a model in Admin Settings.`);
   }
 
+  // v1.82 — custom-provider customModelField resolved alongside the
+  // rest of the provider config so the call sites downstream can read
+  // it from a single object.
+  const customModelField: 'model' | 'modelName' = provider === 'custom'
+    ? resolveCustomModelField(db.custom.customModelField)
+    : 'model';
+
   return {
     ...PROVIDER_DEFAULTS[provider],
     provider,
     apiKey,
     baseURL,
     modelName: resolvedModel,
+    customModelField,
   };
+}
+
+/**
+ * v1.82 — resolve the wire-format model field name for the `custom`
+ * provider. Empty string is treated as "unset" so admins can clear an
+ * override back to the default without dropping the document.
+ */
+function resolveCustomModelField(dbOverride: string | undefined): 'model' | 'modelName' {
+  if (dbOverride === 'modelName' || dbOverride === 'model') {
+    return dbOverride;
+  }
+  if (process.env.CUSTOM_MODEL_FIELD === 'modelName') return 'modelName';
+  return 'model';
 }
 
 export interface ProviderConfig {
@@ -303,6 +331,14 @@ export interface ProviderConfig {
   modelName: string;
   authHeader: 'x-api-key' | 'Authorization';
   needsAnthropicVersion: boolean;
+  /**
+   * v1.82 — name of the JSON field used to carry the model identifier
+   * on the wire for the `custom` provider's chat/completions body.
+   * Defaults to `'model'` (standard OpenAI); flip to `'modelName'` for
+   * proxies that expect camelCase. Undefined-equivalent for non-custom
+   * providers — the call sites only consult it when `provider === 'custom'`.
+   */
+  customModelField?: 'model' | 'modelName';
 }
 
 const PROVIDER_DEFAULTS: Record<AIProvider, Omit<ProviderConfig, 'apiKey' | 'baseURL' | 'modelName'>> = {
@@ -362,11 +398,14 @@ const ENV_BASE_URL: Record<AIProvider, string> = {
 
 interface DbOverrides {
   anthropic: { apiKey: string; baseURL: string; model: string };
-  openai: { apiKey: string; baseURL: string; model: string };
-  xai: { apiKey: string; baseURL: string; model: string };
-  minimax: { apiKey: string; baseURL: string; model: string };
-  gemini: { apiKey: string; baseURL: string; model: string };
-  custom: { apiKey: string; baseURL: string; model: string };
+  openai:    { apiKey: string; baseURL: string; model: string };
+  xai:       { apiKey: string; baseURL: string; model: string };
+  minimax:   { apiKey: string; baseURL: string; model: string };
+  gemini:    { apiKey: string; baseURL: string; model: string };
+  // v1.82 — custom provider carries an extra override that controls
+  // the wire-format model field name (see PROVIDER_DEFAULTS /
+  // customModelField). Other providers ignore it.
+  custom:    { apiKey: string; baseURL: string; model: string; customModelField: string };
 }
 
 let _cache: { value: DbOverrides; expiresAt: number } | null = null;
@@ -409,15 +448,24 @@ export async function resolveActiveAiConfig(batchId: string | null = null): Prom
     return null;
   }
   const v: DbOverrides = {
-    anthropic: { apiKey: config?.getApiKey('anthropic') ?? '', baseURL: config?.providers?.anthropic?.baseURL ?? '', model: config?.providers?.anthropic?.model ?? '' },
-    openai:    { apiKey: config?.getApiKey('openai')    ?? '', baseURL: config?.providers?.openai?.baseURL    ?? '', model: config?.providers?.openai?.model    ?? '' },
-    xai:       { apiKey: config?.getApiKey('xai')       ?? '', baseURL: config?.providers?.xai?.baseURL       ?? '', model: config?.providers?.xai?.model       ?? '' },
-    minimax:   { apiKey: config?.getApiKey('minimax')   ?? '', baseURL: config?.providers?.minimax?.baseURL   ?? '', model: config?.providers?.minimax?.model   ?? '' },
-      gemini:    { apiKey: config?.getApiKey('gemini')    ?? '', baseURL: config?.providers?.gemini?.baseURL    ?? '', model: config?.providers?.gemini?.model    ?? '' },
-      custom:    { apiKey: config?.getApiKey('custom')    ?? '', baseURL: config?.providers?.custom?.baseURL    ?? '', model: config?.providers?.custom?.model    ?? '' },
-    };
-    _configCache = { key: cacheKey, value: v, expiresAt: Date.now() + CACHE_TTL_MS };
-    return v;
+    anthropic: { apiKey: '', baseURL: config?.providers?.anthropic?.baseURL ?? '', model: config?.providers?.anthropic?.model ?? '' },
+    openai:    { apiKey: '', baseURL: config?.providers?.openai?.baseURL    ?? '', model: config?.providers?.openai?.model    ?? '' },
+    xai:       { apiKey: '', baseURL: config?.providers?.xai?.baseURL       ?? '', model: config?.providers?.xai?.model       ?? '' },
+    minimax:   { apiKey: '', baseURL: config?.providers?.minimax?.baseURL   ?? '', model: config?.providers?.minimax?.model   ?? '' },
+    gemini:    { apiKey: '', baseURL: config?.providers?.gemini?.baseURL    ?? '', model: config?.providers?.gemini?.model    ?? '' },
+    // v1.82 — custom provider carries an extra override. Legacy
+    // docs (pre-v1.82) won't have the field set; treat missing as
+    // empty string so the resolver chain falls through to the env
+    // / default.
+    custom:    {
+      apiKey: '',
+      baseURL: config?.providers?.custom?.baseURL ?? '',
+      model:   config?.providers?.custom?.model   ?? '',
+      customModelField: config?.providers?.custom?.customModelField ?? '',
+    },
+  };
+  _configCache = { key: cacheKey, value: v, expiresAt: Date.now() + CACHE_TTL_MS };
+  return v;
 }
 
 // v1.69 — Phase 4: legacy loadDbOverrides keeps the same name and
@@ -443,7 +491,7 @@ export async function loadDbOverrides(): Promise<DbOverrides> {
     xai:       { apiKey: '', baseURL: '', model: '' },
     minimax:   { apiKey: '', baseURL: '', model: '' },
     gemini:    { apiKey: '', baseURL: '', model: '' },
-    custom:    { apiKey: '', baseURL: '', model: '' },
+    custom:    { apiKey: '', baseURL: '', model: '', customModelField: '' },
   };
   _cache = { value: empty, expiresAt: Date.now() + CACHE_TTL_MS };
   return empty;
@@ -479,7 +527,7 @@ export async function resolveProviderAsync(provider?: AIProvider): Promise<Provi
     }
   }
 
-  const override = db[chosen];
+  const override = db[chosen] as { apiKey: string; baseURL: string; model: string; customModelField?: string };
   const apiKey = override.apiKey || envKey(chosen) || '';
   const baseURL = (override.baseURL || process.env[ENV_BASE_URL[chosen]] || DEFAULT_BASE_URLS[chosen]).replace(/\/$/, '');
   const model = getModelForProvider(override.model || process.env[ENV_MODEL[chosen]] || DEFAULT_MODELS[chosen], chosen, override.model);
@@ -488,12 +536,20 @@ export async function resolveProviderAsync(provider?: AIProvider): Promise<Provi
     throw new Error(`No AI model configured for provider '${chosen}'. Please configure a model in Admin Settings.`);
   }
 
+  // v1.82 — custom-provider customModelField. Only meaningful for
+  // `chosen === 'custom'`; other providers get `'model'` (a
+  // placeholder — call sites ignore it for non-custom).
+  const customModelField: 'model' | 'modelName' = chosen === 'custom'
+    ? resolveCustomModelField(override.customModelField)
+    : 'model';
+
   return {
     ...PROVIDER_DEFAULTS[chosen],
     provider: chosen,
     apiKey,
     baseURL,
     modelName: model,
+    customModelField,
   };
 }
 
@@ -512,22 +568,22 @@ export function resolveProvider(): ProviderConfig {
     );
   }
   if (process.env.ANTHROPIC_API_KEY) {
-    return { ...PROVIDER_DEFAULTS.anthropic, provider: 'anthropic', apiKey: process.env.ANTHROPIC_API_KEY, baseURL: envBaseUrl('anthropic'), modelName: envModel('anthropic') };
+    return { ...PROVIDER_DEFAULTS.anthropic, provider: 'anthropic', apiKey: process.env[ENV_KEY.anthropic] ?? '', baseURL: envBaseUrl('anthropic'), modelName: envModel('anthropic'), customModelField: 'model' };
   }
   if (process.env.OPENAI_API_KEY) {
-    return { ...PROVIDER_DEFAULTS.openai, provider: 'openai', apiKey: process.env.OPENAI_API_KEY, baseURL: envBaseUrl('openai'), modelName: envModel('openai') };
+    return { ...PROVIDER_DEFAULTS.openai, provider: 'openai', apiKey: process.env[ENV_KEY.openai] ?? '', baseURL: envBaseUrl('openai'), modelName: envModel('openai'), customModelField: 'model' };
   }
   if (process.env.XAI_API_KEY) {
-    return { ...PROVIDER_DEFAULTS.xai, provider: 'xai', apiKey: process.env.XAI_API_KEY, baseURL: envBaseUrl('xai'), modelName: envModel('xai') };
+    return { ...PROVIDER_DEFAULTS.xai, provider: 'xai', apiKey: process.env[ENV_KEY.xai] ?? '', baseURL: envBaseUrl('xai'), modelName: envModel('xai'), customModelField: 'model' };
   }
   if (process.env.MINIMAX_API_KEY || process.env.MINIMAX_BASE_URL) {
-    return { ...PROVIDER_DEFAULTS.minimax, provider: 'minimax', apiKey: process.env.MINIMAX_API_KEY ?? '', baseURL: envBaseUrl('minimax'), modelName: envModel('minimax') };
+    return { ...PROVIDER_DEFAULTS.minimax, provider: 'minimax', apiKey: process.env[ENV_KEY.minimax] ?? '', baseURL: envBaseUrl('minimax'), modelName: envModel('minimax'), customModelField: 'model' };
   }
   if (process.env.GEMINI_API_KEY) {
-    return { ...PROVIDER_DEFAULTS.gemini, provider: 'gemini', apiKey: process.env.GEMINI_API_KEY, baseURL: envBaseUrl('gemini'), modelName: envModel('gemini') };
+    return { ...PROVIDER_DEFAULTS.gemini, provider: 'gemini', apiKey: process.env[ENV_KEY.gemini] ?? '', baseURL: envBaseUrl('gemini'), modelName: envModel('gemini'), customModelField: 'model' };
   }
   if (process.env.CUSTOM_API_KEY) {
-    return { ...PROVIDER_DEFAULTS.custom, provider: 'custom', apiKey: process.env.CUSTOM_API_KEY, baseURL: envBaseUrl('custom'), modelName: envModel('custom') };
+    return { ...PROVIDER_DEFAULTS.custom, provider: 'custom', apiKey: process.env[ENV_KEY.custom] ?? '', baseURL: envBaseUrl('custom'), modelName: envModel('custom'), customModelField: resolveCustomModelField(undefined) };
   }
   throw new Error(
     'No AI API key configured. Set one of:\n' +
@@ -593,6 +649,11 @@ export function getProvider(provider: AIProvider): ProviderConfig {
     apiKey: process.env[ENV_KEY[provider]] ?? '',
     baseURL: envBaseUrl(provider),
     modelName: envModel(provider),
+    // v1.82 — sync resolver can't read DB. Honour env override for
+    // `custom` only; other providers always use `'model'`.
+    customModelField: provider === 'custom'
+      ? resolveCustomModelField(undefined)
+      : 'model',
   };
 }
 
@@ -680,12 +741,13 @@ export async function chatWithProvider(
     return text;
   }
 
-  // OpenAI / xAI / MiniMax all use chat completions
-  // v1.81 — custom provider can swap `model` → `modelName` via the
-  // CUSTOM_MODEL_FIELD env var (see ai-client.service.ts for the
-  // parallel toggle). Default stays `model`.
+  // OpenAI / xAI / MiniMax / custom — all use chat completions.
+  // v1.82 — custom provider's wire-format model field name is
+  // resolved alongside the rest of the provider config in
+  // resolveProviderAsync. For non-custom providers this is
+  // always `'model'` (set by the resolver).
   const customModelField = provider === 'custom'
-    ? (process.env.CUSTOM_MODEL_FIELD === 'modelName' ? 'modelName' : 'model')
+    ? (config.customModelField ?? 'model')
     : 'model';
   const customBody = { [customModelField]: modelName, messages };
   let res: Response;
@@ -720,6 +782,7 @@ export async function chatWithProvider(
       durationMs: Date.now() - startedAt,
       error: wrapped.message,
       status: res.status,
+      requestBody: customBody,
     });
     throw wrapped;
   }
@@ -809,19 +872,18 @@ export async function chatWithConfig(
     return text;
   }
 
-  // OpenAI / xAI / MiniMax — all use chat/completions
-  let res: Response;
-  // v1.81 — same model-field compatibility as the unified chat()
-  // path: admins running `custom` through an in-house proxy can
-  // flip CUSTOM_MODEL_FIELD=modelName to use camelCase. Default
-  // stays `model` (plain OpenAI-compat).
-  const customModelField = provider === 'custom'
-    ? (process.env.CUSTOM_MODEL_FIELD === 'modelName' ? 'modelName' : 'model')
+  // OpenAI / xAI / MiniMax / custom — all use chat/completions.
+  // v1.82 — read customModelField from the resolved config instead of
+  // hitting the env var every time. Non-custom providers fall through
+  // to `'model'` for safety.
+  const customModelField: 'model' | 'modelName' = provider === 'custom'
+    ? (config.customModelField ?? 'model')
     : 'model';
   const customBody = {
     [customModelField]: modelName,
     messages,
   };
+  let res: Response;
   try {
     res = await fetch(`${baseURL}/chat/completions`, {
       method: 'POST',

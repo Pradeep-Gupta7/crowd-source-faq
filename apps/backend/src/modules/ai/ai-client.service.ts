@@ -399,19 +399,22 @@ export class AiClient {
       // xai + custom — classic OpenAI shape, `max_tokens` is the
       // widely understood name on third-party servers.
       //
-      // v1.81 — custom-provider field-name compatibility. Some
+      // v1.82 — custom-provider field-name compatibility. Some
       // admins route their `custom` provider through an in-house
       // proxy or third-party gateway that translates OpenAI fields
       // (e.g. snake_case `model`) into that tool's native schema
       // (e.g. camelCase `modelName`), but the upstream (Groq-style)
       // then rejects the non-OpenAI field with `400 property
-      // 'modelName' is unsupported`. Operators can flip
-      // `CUSTOM_MODEL_FIELD` to `'modelName'` for their proxy, or
-      // `'model'` (default) for plain OpenAI-compat. Read at call
-      // time so hot-reload picks it up.
-      const modelField = config.provider === 'custom'
-        ? (process.env.CUSTOM_MODEL_FIELD === 'modelName' ? 'modelName' : 'model')
-        : 'model';
+      // 'modelName' is unsupported`. The field name is resolved
+      // from the resolved provider config (`config.customModelField`)
+      // — see `resolveCustomModelField()` in aiProvider.ts for the
+      // DB → env → default chain. xAI (and the rest) always use
+      // the standard `'model'` field.
+      const modelField = (
+        config.provider === 'custom'
+          ? (config.customModelField ?? 'model')
+          : 'model'
+      );
       body = {
         [modelField]: model,
         max_tokens: maxTokens,
