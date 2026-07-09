@@ -1,6 +1,4 @@
-<p align="center">
-  <img src="public/logo.svg" alt="Vidyā Logo" width="80" height="80" />
-</p>
+
 
 <h1 align="center">Vidyā — Living FAQ Portal</h1>
 
