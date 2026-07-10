@@ -1,111 +1,67 @@
+# 🎓 Vidyā — Living FAQ Portal
 
+A polished, AI-powered **student support & FAQ portal** built for the **Vicharanashala Internship (VINS)** at IIT Ropar. It combines a crowd-sourced FAQ knowledge base with a grounded AI assistant ("Yakṣa") that answers only from vetted content, while admins manage everything through a real-time analytics dashboard.
 
-<h1 align="center">Vidyā — Living FAQ Portal</h1>
+> **Calm. Focused. Trustworthy.** Semantic search, zero-hallucination AI answers, and a clean card-based UI — like a well-organized digital help desk.
 
-<p align="center">
-  <strong>An AI-powered, crowd-sourced knowledge base for the Vicharanashala Internship (VINS) at IIT Ropar</strong>
-</p>
-
-<p align="center">
-  <a href="https://crowd-source-faq-seven.vercel.app">🌐 Live Demo</a> •
-  <a href="#-features">✨ Features</a> •
-  <a href="#-tech-stack">🛠 Tech Stack</a> •
-  <a href="#-getting-started">🚀 Getting Started</a> •
-  <a href="#-architecture">🏗 Architecture</a>
-</p>
-
-<p align="center">
-  <a href="https://crowd-source-faq-seven.vercel.app">
-    <img src="https://img.shields.io/badge/▶_Live_Demo-crowd--source--faq--seven.vercel.app-000?style=for-the-badge&logo=vercel&logoColor=white" alt="Live on Vercel" />
-  </a>
-</p>
-
-
-<p align="center">
-  <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white" alt="React 19" />
-  <img src="https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript&logoColor=white" alt="TypeScript" />
-  <img src="https://img.shields.io/badge/TanStack_Start-1.x-FF4154?logo=reactquery&logoColor=white" alt="TanStack Start" />
-  <img src="https://img.shields.io/badge/Supabase-Auth_%26_DB-3FCF8E?logo=supabase&logoColor=white" alt="Supabase" />
-  <img src="https://img.shields.io/badge/Gemini_AI-Powered-4285F4?logo=google&logoColor=white" alt="Gemini AI" />
-  <img src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white" alt="Tailwind CSS" />
-  <img src="https://img.shields.io/badge/Deployed_on-Vercel-000?logo=vercel&logoColor=white" alt="Vercel" />
-</p>
+🌐 **Live Demo:** [crowd-source-faq-seven.vercel.app](https://crowd-source-faq-seven.vercel.app)
 
 ---
 
-## 📸 Preview
+## 📋 Table of Contents
 
-<p align="center">
-  <img src="public/screenshots/hero.png" alt="Vidyā Homepage — Hero Section" width="100%" />
-</p>
-
-<details>
-<summary><strong>📷 More Screenshots</strong></summary>
-
-| Browse FAQs | Ask AI |
-|:-----------:|:------:|
-| <img src="public/screenshots/browse.png" alt="Browse FAQs" width="480" /> | <img src="public/screenshots/ask_ai.png" alt="Ask AI" width="480" /> |
-
-| Home — Features Section |
-|:-----------------------:|
-| <img src="public/screenshots/features.png" alt="Features" width="960" /> |
-
-</details>
+- [Features](#-features)
+- [Tech Stack](#-tech-stack)
+- [Architecture](#-architecture)
+- [Project Structure](#-project-structure)
+- [Getting Started](#-getting-started)
+- [Environment Variables](#-environment-variables)
+- [Server Function Reference](#-server-function-reference)
+- [Roles & Permissions](#-roles--permissions)
+- [Advanced Features](#-advanced-features)
+- [Deployment](#-deployment-vercel)
+- [Contributing](#-contributing)
 
 ---
 
 ## ✨ Features
 
-### 🔍 Semantic Search
-Vector-powered FAQ search using **pgvector** and Gemini Embeddings. Every query finds the most semantically relevant answers — not just keyword matches.
+### For Students
+- **Browse & Discover** — priority-sorted FAQ categories with view counts, upvotes/downvotes, and tag-based filtering
+- **Semantic Search** — vector-powered search via pgvector + Gemini Embeddings, finds relevant answers even without exact keyword matches
+- **Ask AI (Yakṣa)** — a grounded AI assistant that answers only from the FAQ knowledge base, with bracketed source citations `[1]`, `[2]`
+- **Raise a Query** — submit unanswered questions for admin review
+- **Community Hub** — see submitted queries, upvote important ones, track admin responses
+- **Learning Modules** — chapter-based learning content with progress tracking and enrollment
+- **Personal Dashboard** — activity stats, recent queries, bookmarked FAQs, learning progress
 
-### 🤖 Ask AI (Yakṣa)
-A grounded AI assistant that answers questions **only** from your FAQ knowledge base. Cites sources with bracket references like `[1]`, `[2]`. Zero hallucination by design.
+### For Admins & Moderators
+- **FAQ CRUD** — create, edit, delete, and toggle publish state
+- **Category Management** — add, edit, and reorder categories
+- **Query Triage** — review, answer, and close student queries; promote to full FAQ entries
+- **Analytics** — view counts, search logs, and trending topics
+- **User & Role Management** — promote users to admin/moderator
 
-### 📚 Browse & Discover
-Organized FAQ categories with priority-sorted entries, view counts, upvotes/downvotes, and tag-based filtering. Beautiful card-based UI with smooth animations.
-
-### ❓ Raise a Query
-Students can submit questions that aren't yet answered in the FAQ. Admins review, answer, and optionally promote queries to full FAQ entries.
-
-### 👥 Community
-Public community hub where users can see submitted queries, upvote important ones, and track admin responses.
-
-### 🛡️ Admin Dashboard
-Full-featured admin panel with:
-- **FAQ CRUD** — Create, edit, delete, and toggle publish state
-- **Category Management** — Add/edit/reorder categories
-- **Query Triage** — Review, answer, and close student queries
-- **Analytics** — View counts, search logs, and trending topics
-- **User & Role Management** — Promote users to admin/moderator
-
-### 🔐 Authentication
-- **Google OAuth** sign-in via Supabase Auth
-- **Custom email/password** admin accounts
-- Role-based access control (`admin`, `moderator`, `user`)
-- Row-Level Security (RLS) on every table
-
-### 🎓 Learning Modules
-Curated learning content with chapter-based navigation, progress tracking, and enrollment management.
-
-### 📊 User Dashboard
-Personalized dashboard with activity stats, recent queries, bookmarked FAQs, and learning progress.
+### System-Wide
+- **Google OAuth + Email/Password Auth** — via Supabase Auth
+- **Row-Level Security** — every table enforces RLS; admins see everything, students see only published content and their own data
+- **Zero-Hallucination AI** — retrieval-augmented generation with strict grounding instructions
 
 ---
 
 ## 🛠 Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| **Framework** | [TanStack Start](https://tanstack.com/start) (Vite + React 19 + TypeScript + Vinxi + Nitro) |
-| **Styling** | [Tailwind CSS v4](https://tailwindcss.com/) + [Radix UI](https://radix-ui.com/) primitives |
-| **Database** | [Supabase](https://supabase.com/) (PostgreSQL + pgvector + Row-Level Security) |
-| **Auth** | Supabase Auth (Google OAuth + Email/Password) |
-| **AI** | [Google Gemini API](https://ai.google.dev/) — `gemini-embedding-001` + `gemini-3.1-flash-lite` |
-| **Animations** | [Motion](https://motion.dev/) (Framer Motion v12) |
-| **Charts** | [Recharts](https://recharts.org/) |
-| **Icons** | [Lucide React](https://lucide.dev/) |
-| **Deployment** | [Vercel](https://vercel.com/) (Nitro auto-preset) |
+| Layer         | Technology                                                        |
+|---------------|--------------------------------------------------------------------|
+| Framework     | [TanStack Start](https://tanstack.com/start) (Vite + React 19 + TypeScript + Vinxi + Nitro) |
+| Styling       | Tailwind CSS v4 + Radix UI primitives                              |
+| Database      | Supabase (PostgreSQL + pgvector + Row-Level Security)              |
+| Auth          | Supabase Auth (Google OAuth + Email/Password)                      |
+| AI            | Google Gemini API — `gemini-embedding-001` + `gemini-3.1-flash-lite` |
+| Animations    | Motion (Framer Motion v12)                                         |
+| Charts        | Recharts                                                            |
+| Icons         | Lucide React                                                        |
+| Deployment    | Vercel (Nitro auto-preset)                                          |
 
 ---
 
@@ -139,10 +95,40 @@ Personalized dashboard with activity stats, recent queries, bookmarked FAQs, and
 
 ### Key Design Decisions
 
-- **Server Functions**: All database and AI calls run server-side via TanStack's `createServerFn`. API keys never reach the client.
-- **pgvector**: FAQ embeddings stored directly in PostgreSQL for fast cosine-similarity search via `match_faqs` RPC.
-- **Grounded AI**: The Ask AI feature retrieves relevant FAQ context first, then sends it to the LLM with strict grounding instructions — preventing hallucination.
-- **Row-Level Security**: Every Supabase table enforces RLS policies. Admins see everything; students see only published content and their own data.
+- **Server Functions** — all database and AI calls run server-side via TanStack's `createServerFn`; API keys never reach the client
+- **pgvector** — FAQ embeddings stored directly in PostgreSQL for fast cosine-similarity search via the `match_faqs` RPC
+- **Grounded AI** — Ask AI retrieves relevant FAQ context first, then sends it to the LLM with strict grounding instructions to prevent hallucination
+- **Row-Level Security** — enforced on every Supabase table
+
+---
+
+## 📁 Project Structure
+
+```
+vidya/
+├── public/                  # Static assets (logo, screenshots)
+├── src/
+│   ├── components/          # Reusable UI components (shadcn/ui based)
+│   ├── hooks/                # Custom React hooks
+│   ├── integrations/         # Supabase client, types, auth middleware
+│   ├── lib/                  # Server-side AI helpers, utilities
+│   │   ├── ai.server.ts      # Gemini embed() and chat() functions
+│   │   └── faq.functions.ts  # All TanStack Server Functions
+│   └── routes/
+│       ├── index.tsx          # Landing page
+│       ├── browse.tsx         # FAQ browser with category filters
+│       ├── ask.tsx            # AI-grounded Q&A page
+│       ├── queries.tsx        # Community queries
+│       ├── auth.tsx           # Login / Sign-up
+│       └── _authenticated/    # Protected routes
+│           ├── admin.tsx      # Admin dashboard
+│           ├── dashboard.tsx  # User dashboard
+│           ├── community.tsx  # Community hub
+│           └── courses.tsx    # Learning modules
+├── schema.sql                # Complete database schema (pgvector + RLS)
+├── seed_data.sql              # FAQ seed data (150+ entries)
+└── vercel.json                # Vercel configuration
+```
 
 ---
 
@@ -150,30 +136,58 @@ Personalized dashboard with activity stats, recent queries, bookmarked FAQs, and
 
 ### Prerequisites
 
-- **Node.js** ≥ 18
-- **npm** ≥ 9
+- Node.js ≥ 18
+- npm ≥ 9
 - A [Supabase](https://supabase.com/) project (free tier works)
 - A [Google Gemini API key](https://aistudio.google.com/apikey) (free tier works)
 
-### 1. Clone & Install
+### Installation
+
+**1. Clone the repository**
 
 ```bash
 git clone https://github.com/Pradeep-Gupta7/crowd-source-faq.git
 cd crowd-source-faq
+```
+
+**2. Install dependencies**
+
+```bash
 npm install
 ```
 
-### 2. Database Setup
+**3. Set up the database**
 
-Run the schema migration in your Supabase SQL Editor:
+Copy and paste the contents of `schema.sql` into the Supabase SQL Editor and execute it, then do the same with `seed_data.sql` to load FAQ seed data.
+
+**4. Configure environment variables**
+
+Create a `.env` file in the project root (see [Environment Variables](#-environment-variables)).
+
+**5. Start the development server**
 
 ```bash
-# Copy and paste the contents of schema.sql into the Supabase SQL Editor and execute it.
-# Then seed the FAQ data:
-# Copy and paste the contents of seed_data.sql into the Supabase SQL Editor and execute it.
+npm run dev
 ```
 
-### 3. Environment Variables
+The app will be available at `http://localhost:3000`.
+
+**6. Create an admin user**
+
+Sign up via the app (Google OAuth or email/password), then promote your user to admin in the Supabase SQL Editor:
+
+```sql
+INSERT INTO public.user_roles (user_id, role)
+VALUES (
+  (SELECT id FROM auth.users WHERE email = 'your-email@example.com'),
+  'admin'
+)
+ON CONFLICT DO NOTHING;
+```
+
+---
+
+## 🔐 Environment Variables
 
 Create a `.env` file in the project root:
 
@@ -191,27 +205,66 @@ VITE_SUPABASE_PUBLISHABLE_KEY="sb_publishable_..."
 GEMINI_API_KEY="your-gemini-api-key"
 ```
 
-### 4. Run Locally
+---
 
-```bash
-npm run dev
-```
+## 🧪 Server Function Reference
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+All calls run server-side via TanStack's `createServerFn` — no public REST routes are exposed.
 
-### 5. Create an Admin User
+### Public
 
-1. Sign up via the app (Google OAuth or email/password)
-2. In Supabase SQL Editor, promote your user to admin:
+| Function         | Description                            |
+|-------------------|-----------------------------------------|
+| `listCategories`  | Fetch all FAQ categories                |
+| `listFaqs`        | List FAQs with sorting & filtering      |
+| `semanticSearch`  | Vector similarity search via pgvector   |
+| `askAi`           | Grounded AI answer using Gemini LLM     |
+| `submitQuery`     | Submit a student query                  |
 
-```sql
-INSERT INTO public.user_roles (user_id, role)
-VALUES (
-  (SELECT id FROM auth.users WHERE email = 'your-email@example.com'),
-  'admin'
-)
-ON CONFLICT DO NOTHING;
-```
+### Authenticated
+
+| Function     | Description                    |
+|--------------|----------------------------------|
+| `voteFaq`    | Upvote/downvote a FAQ entry     |
+
+### Admin
+
+| Function          | Description                     |
+|--------------------|-----------------------------------|
+| `adminCreateFaq`   | Create a new FAQ                |
+| `adminUpdateFaq`   | Edit an existing FAQ            |
+| `adminDeleteFaq`   | Delete a FAQ                    |
+| `adminAnswerQuery` | Answer a student query          |
+
+---
+
+## 👥 Roles & Permissions
+
+| Permission                    | Student | Moderator | Admin |
+|--------------------------------|:-------:|:---------:|:-----:|
+| Browse & search FAQs           | ✅      | ✅        | ✅    |
+| Vote on FAQs                   | ✅      | ✅        | ✅    |
+| Ask AI (Yakṣa)                 | ✅      | ✅        | ✅    |
+| Raise & track queries          | ✅      | ✅        | ✅    |
+| Participate in community hub   | ✅      | ✅        | ✅    |
+| Answer / close queries         | ❌      | ✅        | ✅    |
+| Create / edit / delete FAQs    | ❌      | ✅        | ✅    |
+| Manage categories              | ❌      | ✅        | ✅    |
+| View analytics dashboard       | ❌      | ❌        | ✅    |
+| Manage users & roles           | ❌      | ❌        | ✅    |
+
+---
+
+## 🔬 Advanced Features
+
+### 🤖 Grounded AI (Ask Yakṣa)
+Retrieves the most relevant FAQ entries via pgvector similarity search, then passes them to Gemini with strict instructions to answer only from that context — citing sources with bracket references and refusing to answer when no relevant FAQ exists.
+
+### 🔍 Semantic Search
+FAQ content is embedded with `gemini-embedding-001` (1536-dim) and stored directly in PostgreSQL; queries are matched via cosine similarity through the `match_faqs` RPC, so results surface even when wording doesn't match exactly.
+
+### 🛡️ Row-Level Security
+Every Supabase table enforces RLS policies — students can only read published content and their own submissions, while admins have full visibility.
 
 ---
 
@@ -220,64 +273,17 @@ ON CONFLICT DO NOTHING;
 Vidyā is fully optimized for **Vercel** via Nitro's auto-preset detection.
 
 1. **Link** your GitHub repo on [vercel.com](https://vercel.com)
-2. **Set Environment Variables** in the Vercel project settings:
+2. **Set environment variables** in the Vercel project settings:
    - `SUPABASE_URL`
    - `SUPABASE_PUBLISHABLE_KEY`
    - `SUPABASE_SERVICE_ROLE_KEY`
    - `VITE_SUPABASE_URL`
    - `VITE_SUPABASE_PUBLISHABLE_KEY`
    - `GEMINI_API_KEY`
-3. **Deploy** — framework auto-detected as TanStack Start
+3. **Deploy** — framework is auto-detected as TanStack Start
 
-> **Build Command**: `npm run build`  
-> **Output Directory**: `.output`
-
----
-
-## 📁 Project Structure
-
-```
-vidya/
-├── public/                  # Static assets (logo, screenshots)
-├── src/
-│   ├── components/          # Reusable UI components (shadcn/ui based)
-│   ├── hooks/               # Custom React hooks
-│   ├── integrations/        # Supabase client, types, auth middleware
-│   ├── lib/                 # Server-side AI helpers, utilities
-│   │   ├── ai.server.ts     # Gemini embed() and chat() functions
-│   │   └── faq.functions.ts # All TanStack Server Functions
-│   └── routes/
-│       ├── index.tsx         # Landing page
-│       ├── browse.tsx        # FAQ browser with category filters
-│       ├── ask.tsx           # AI-grounded Q&A page
-│       ├── queries.tsx       # Community queries
-│       ├── auth.tsx          # Login / Sign-up
-│       └── _authenticated/   # Protected routes
-│           ├── admin.tsx     # Admin dashboard
-│           ├── dashboard.tsx # User dashboard
-│           ├── community.tsx # Community hub
-│           └── courses.tsx   # Learning modules
-├── schema.sql               # Complete database schema (pgvector + RLS)
-├── seed_data.sql             # FAQ seed data (150+ entries)
-└── vercel.json               # Vercel configuration
-```
-
----
-
-## 🧪 Key Server Functions
-
-| Function | Description |
-|----------|-------------|
-| `listCategories` | Fetch all FAQ categories |
-| `listFaqs` | List FAQs with sorting & filtering |
-| `semanticSearch` | Vector similarity search via pgvector |
-| `askAi` | Grounded AI answer using Gemini LLM |
-| `voteFaq` | Upvote/downvote a FAQ entry |
-| `submitQuery` | Submit a student query |
-| `adminCreateFaq` | Admin: create a new FAQ |
-| `adminUpdateFaq` | Admin: edit an existing FAQ |
-| `adminDeleteFaq` | Admin: delete a FAQ |
-| `adminAnswerQuery` | Admin: answer a student query |
+> **Build Command:** `npm run build`
+> **Output Directory:** `.output`
 
 ---
 
